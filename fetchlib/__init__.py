@@ -183,12 +183,15 @@ def ultimate_decompose(product, run_size):
         ["quantity", "typeName"]
     ]
 
-    return steps, a
+    return reversed(steps), a
 
 
 def create_production_schema(product, run_size):
     steps, ms = ultimate_decompose(product, run_size)
     for s in steps:
+        if s.empty:
+            yield ms
+            continue
         v = append_products(s).join(norm_types().set_index("typeID"))
         v["runs_required"] = v["quantity"] / v["quantity_product"]
         yield v[
@@ -197,5 +200,5 @@ def create_production_schema(product, run_size):
                 "typeName",
                 "quantity",
                 "runs_required",
-            ]
+                ]
         ]
