@@ -1,19 +1,38 @@
 import bz2
-import os
 import sqlite3
 import pandas as pd
+import requests
+from pathlib import Path
 
-class Importer():
-    path = './db/'
-    db_name = 'eve.db'
-    output_filename = 'eve.db.bz2file'
-    url = 'https://www.fuzzwork.co.uk/dump/sqlite-latest.sqlite.bz2'
+PATH = Path('./db/')
+DB_NAME = 'eve.db'
+OUTPUT_FILENAME = 'eve.db.bz2file'
+URL = 'https://www.fuzzwork.co.uk/dump/sqlite-latest.sqlite.bz2'
 
+class Singleton(type):
+    _instances = {}
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+class Importer(metaclass=Singleton):
+
+    # Singleton class
     def __init__(self):
-        self.db = os.path.abspath(EVEDB_PATH)
-        self.conn = sqlite3.connect(db)
 
-    def cache_tables(self):
+        self.db = PATH / DB_NAME
+
+        try:
+            self.conn = sqlite3.connect(self.db)
+        except sqlite3.OperationalError:
+            self.__download_db()
+            self.__bunzip2()
+            self.conn = sqlite3.connect(self.db)
+
+        self.__cache_tables()
+
+    def __cache_tables(self):
         types_q = """select  * from  invTypes """
         activities_q = """select * from industryActivity"""
         products_q = """select * from industryActivityProducts"""
@@ -21,13 +40,14 @@ class Importer():
         self.tables = {
             "types": pd.read_sql_query(types_q, self.conn),
             "activity": pd.read_sql_query(activities_q, self.conn),
-            "products": pd.read_sql_query(products_q, self.onn),
+            "products": pd.read_sql_query(products_q, self.conn),
             "materials": pd.read_sql_query(materials_q, self.conn),
         }
 
-    def download_db():
-        res = requests.get(url, stream=True)
-        output = "%s/%s" % (path, output_filename)
+    def __download_db(self):
+        res = requests.get(URL, stream=True)
+        PATH.mkdir(parents=True, exist_ok=True)
+        output = PATH / OUTPUT_FILENAME
         if res.status_code != 200:
             print("Cannot download the file.")
             print(res.content)
@@ -48,16 +68,30 @@ class Importer():
             print("\rDownloading file ... [FAILED]             ")
             print(str(err))
             return False
+        print("\rDownloading file: {}  [SUCCESS]             ".format(output))
+        return True
 
-        print("\rDownloading file ... [SUCCESS]             ")
-        return True 
-
-    def bunzip2(self, path, source_filename, dest_filename):
-        source_file = "%s/%s" % (path, source_filename)
+    def __bunzip2(self):
+        source_file = Path(PATH, OUTPUT_FILENAME)
+        dest_file = self.db
         try:
             print("Decompressing file ... ", end='')
             with open(source_file, 'rb') as bz2file:
-                with open(dest_filename, 'wb') as unzipped_file:
+                with open(dest_file, 'wb') as unzipped_file:
                     decompressor = bz2.BZ2Decompressor()
                     for data in iter(lambda: bz2file.read(100 * 1024), b''):
-                        unzipped_file.write(decompressor.decompress(data)) 
+                        unzipped_file.write(decompressor.decompress(data))
+        except Exception as e:
+            print(ste(e))
+
+        print('Succesfully finished decompression: source: {},  dest: {}'.format(source_file, dest_file))
+
+
+def get_human_size(size, precision=2):
+    """ Display size in human readable str """
+    suffixes = ['B', 'KB', 'MB', 'GB', 'TB']
+    suffixIndex = 0
+    while size > 1024 and suffixIndex < 4:
+        suffixIndex += 1  # increment the index of the suffix
+        size = size / 1024.0  # apply the division
+    return "%.*f%s" % (precision, size, suffixes[suffixIndex])
