@@ -9,27 +9,28 @@ DB_NAME = 'eve.db'
 OUTPUT_FILENAME = 'eve.db.bz2file'
 URL = 'https://www.fuzzwork.co.uk/dump/sqlite-latest.sqlite.bz2'
 
-class Singleton(type):
-    _instances = {}
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
 
-class Importer(metaclass=Singleton):
+
+class ImporterSingleton(type):
+    _instance = None
+    def __call__(cls, *args, **kwargs):
+        if not cls._instance or not (PATH/DB_NAME).exists():
+            cls._instance = super(ImporterSingleton, cls).__call__(*args, **kwargs)
+        return cls._instance
+
+
+class Importer(metaclass=ImporterSingleton):
 
     # Singleton class
     def __init__(self):
 
         self.db = PATH / DB_NAME
 
-        try:
-            self.conn = sqlite3.connect(self.db)
-        except sqlite3.OperationalError:
+        if not (PATH/DB_NAME).exists():
             self.__download_db()
             self.__bunzip2()
-            self.conn = sqlite3.connect(self.db)
 
+        self.conn = sqlite3.connect(self.db)
         self.__cache_tables()
 
     def __cache_tables(self):
@@ -95,3 +96,4 @@ def get_human_size(size, precision=2):
         suffixIndex += 1  # increment the index of the suffix
         size = size / 1024.0  # apply the division
     return "%.*f%s" % (precision, size, suffixes[suffixIndex])
+
