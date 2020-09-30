@@ -4,28 +4,11 @@ import pandas as pd
 import numpy as np
 
 from .utils import my_collection, NON_PRODUCTABLE
+from .importer import Importer
 
-# Your 'eve.db' path. Place it in folder to save everything as is
-EVEDB_PATH = "eve.db"
-db = os.path.abspath(EVEDB_PATH)
-conn = sqlite3.connect(db)
-c = conn.cursor()
+I = Importer()
 
-
-def make_cached_tables():
-    types_q = """select  * from  invTypes """
-    activities_q = """select * from industryActivity"""
-    products_q = """select * from industryActivityProducts"""
-    materials_q = """select * from industryActivityMaterials"""
-    return {
-        "types": pd.read_sql_query(types_q, conn),
-        "activity": pd.read_sql_query(activities_q, conn),
-        "products": pd.read_sql_query(products_q, conn),
-        "materials": pd.read_sql_query(materials_q, conn),
-    }
-
-
-CACHED_TABLES = make_cached_tables()
+CACHED_TABLES = I.tables
 
 
 def indexed_types():
@@ -89,9 +72,10 @@ def count_required(step):
     def runs_required(x):
         run_size = np.minimum(x.quantity, x.run)
         jobs_required = (np.ceil(x.quantity / run_size)).astype("int32")
-        # count for prodaction
+        # count for production
         if x.activityID == 1:
             r_req = jobs_required * run_size
+        # count for reaction
         elif x.activityID == 11:
             r_req = int(np.ceil((x.quantity / x.quantity_product)))
         else:
