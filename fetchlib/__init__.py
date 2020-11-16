@@ -61,9 +61,9 @@ def count_required(step):
             r_req = jobs_required * run_size
             run_price = np.maximum(run_price, run_size)
 
-            trim_size =  x.quantity - run_size*jobs_required
+            trim_size = x.quantity - run_size * jobs_required
             trim_price = int(np.ceil(x.quantity_materials * trim_size * x.me))
-            trim_price = np.maximum(trim_price,trim_size)
+            trim_price = np.maximum(trim_price, trim_size)
 
             # FIXME Need some testings
             run_price = (run_price * jobs_required) + trim_size
@@ -189,5 +189,5 @@ def create_production_schema(product, run_size):
                 "typeName",
                 "quantity",
                 "runs_required",
-                ]
+            ]
         ]

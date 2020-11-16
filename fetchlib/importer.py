@@ -4,18 +4,20 @@ import pandas as pd
 import requests
 from pathlib import Path
 
-PATH = Path('./db/')
-DB_NAME = 'eve.db'
-OUTPUT_FILENAME = 'eve.db.bz2file'
-URL = 'https://www.fuzzwork.co.uk/dump/sqlite-latest.sqlite.bz2'
-
+PATH = Path("./db/")
+DB_NAME = "eve.db"
+OUTPUT_FILENAME = "eve.db.bz2file"
+URL = "https://www.fuzzwork.co.uk/dump/sqlite-latest.sqlite.bz2"
 
 
 class ImporterSingleton(type):
     _instance = None
+
     def __call__(cls, *args, **kwargs):
-        if not cls._instance or not (PATH/DB_NAME).exists():
-            cls._instance = super(ImporterSingleton, cls).__call__(*args, **kwargs)
+        if not cls._instance or not (PATH / DB_NAME).exists():
+            cls._instance = super(ImporterSingleton, cls).__call__(
+                *args, **kwargs
+            )
         return cls._instance
 
 
@@ -26,7 +28,7 @@ class Importer(metaclass=ImporterSingleton):
 
         self.db = PATH / DB_NAME
 
-        if not (PATH/DB_NAME).exists():
+        if not (PATH / DB_NAME).exists():
             self.__download_db()
             self.__bunzip2()
 
@@ -44,7 +46,7 @@ class Importer(metaclass=ImporterSingleton):
             "activity": pd.read_sql_query(activities_q, self.conn),
             "products": pd.read_sql_query(products_q, self.conn),
             "materials": pd.read_sql_query(materials_q, self.conn),
-            "marketgroups": pd.read_sql_query(marketgroups_q, self.conn)
+            "marketgroups": pd.read_sql_query(marketgroups_q, self.conn),
         }
 
     def __download_db(self):
@@ -59,10 +61,9 @@ class Importer(metaclass=ImporterSingleton):
             with open(output, "wb") as handle:
                 for data in res.iter_content(1024 * 1024 * 10):
                     print(
-                        "\rDownloading file ... [%s]             " % (
-                            get_human_size(total_size)
-                        ),
-                        end=""
+                        "\rDownloading file ... [%s]             "
+                        % (get_human_size(total_size)),
+                        end="",
                     )
                     handle.write(data)
                     total_size += len(data)
@@ -78,24 +79,27 @@ class Importer(metaclass=ImporterSingleton):
         source_file = Path(PATH, OUTPUT_FILENAME)
         dest_file = self.db
         try:
-            print("Decompressing file ... ", end='')
-            with open(source_file, 'rb') as bz2file:
-                with open(dest_file, 'wb') as unzipped_file:
+            print("Decompressing file ... ", end="")
+            with open(source_file, "rb") as bz2file:
+                with open(dest_file, "wb") as unzipped_file:
                     decompressor = bz2.BZ2Decompressor()
-                    for data in iter(lambda: bz2file.read(100 * 1024), b''):
+                    for data in iter(lambda: bz2file.read(100 * 1024), b""):
                         unzipped_file.write(decompressor.decompress(data))
         except Exception as e:
             print(ste(e))
 
-        print('Succesfully finished decompression: source: {},  dest: {}'.format(source_file, dest_file))
+        print(
+            "Succesfully finished decompression: source: {},  dest: {}".format(
+                source_file, dest_file
+            )
+        )
 
 
 def get_human_size(size, precision=2):
     """ Display size in human readable str """
-    suffixes = ['B', 'KB', 'MB', 'GB', 'TB']
+    suffixes = ["B", "KB", "MB", "GB", "TB"]
     suffixIndex = 0
     while size > 1024 and suffixIndex < 4:
         suffixIndex += 1  # increment the index of the suffix
         size = size / 1024.0  # apply the division
     return "%.*f%s" % (precision, size, suffixes[suffixIndex])
-

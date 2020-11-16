@@ -15,12 +15,13 @@ NON_PRODUCTABLE = {
     "R.A.M.- Starship Tech Blueprint",
 }
 
+
 class Classes:
-    ADVANCED_COMPONENT = 'advanced_component'
-    BASIC_CAPITAL_COMPONENT = 'basic_capital_component'
-    ADVANCED_CAPITAL_COMPONENT = 'advanced_capital_component'
-    STRUCTURE_COMPONENT = 'structure_component'
-    
+    ADVANCED_COMPONENT = "advanced_component"
+    BASIC_CAPITAL_COMPONENT = "basic_capital_component"
+    ADVANCED_CAPITAL_COMPONENT = "advanced_capital_component"
+    STRUCTURE_COMPONENT = "structure_component"
+
 
 class BP:
     def __init__(
@@ -32,7 +33,7 @@ class BP:
         runs=None,
     ):
         self.name = name
-        self.me = me * efficiency_rigs.get(p_type,1.0)
+        self.me = me * efficiency_rigs.get(p_type, 1.0)
         self.te = te
         self.runs = runs if runs else 2 ** 20
 
@@ -41,7 +42,6 @@ class BP:
 
 
 class Collection:
-
     def __init__(self, prints: Iterable[BP]):
         self.prints = {p.name: p for p in prints}
 
@@ -72,18 +72,19 @@ class Collection:
 efficiency_rigs = {
     Classes.ADVANCED_COMPONENT: 0.958,
     "small_basic_ship": 1,
-    "small_advanced_ship":1,
+    "small_advanced_ship": 1,
     "capital_basic_ship": 0.97,
-    Classes.ADVANCED_CAPITAL_COMPONENT:0.958,
-    'capital_advanced_ship':0.956}
+    Classes.ADVANCED_CAPITAL_COMPONENT: 0.958,
+    "capital_advanced_ship": 0.956,
+}
+
 
 def components():
-    with open('fetchlib/blueprints/components.json') as f:
+    with open("fetchlib/blueprints/components.json") as f:
         d = json.load(f)
     for tp, lst in d.items():
         for name in lst:
-            yield BP(name, 0.9,0.8,p_type=tp)
+            yield BP(name, 0.9, 0.8, p_type=tp)
 
 
 my_collection = Collection([*components()])
-
