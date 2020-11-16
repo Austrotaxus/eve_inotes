@@ -6,9 +6,9 @@ import numpy as np
 from .utils import my_collection, NON_PRODUCTABLE
 from .importer import Importer
 
-I = Importer()
+db_importer = Importer()
 
-CACHED_TABLES = I.tables
+CACHED_TABLES = db_importer.tables
 
 
 def indexed_types():
@@ -17,15 +17,6 @@ def indexed_types():
 
 def norm_types():
     return CACHED_TABLES["types"]
-
-
-def withdrawed_activities():
-    activity = CACHED_TABLES["activity"]
-    res = activity
-    res = res[res["activityID"].isin((1, 3, 4, 5, 11))]
-    fuels = types[types["typeName"].str.contains("Fuel Block")]["typeID"]
-    res = res[~res["typeID"].isin(fuels)]
-    return res
 
 
 def withdrawed_products():
@@ -61,9 +52,9 @@ def count_required(step):
             r_req = jobs_required * run_size
             run_price = np.maximum(run_price, run_size)
 
-            trim_size =  x.quantity - run_size*jobs_required
+            trim_size = x.quantity - run_size * jobs_required
             trim_price = int(np.ceil(x.quantity_materials * trim_size * x.me))
-            trim_price = np.maximum(trim_price,trim_size)
+            trim_price = np.maximum(trim_price, trim_size)
 
             # FIXME Need some testings
             run_price = (run_price * jobs_required) + trim_size
@@ -189,5 +180,5 @@ def create_production_schema(product, run_size):
                 "typeName",
                 "quantity",
                 "runs_required",
-                ]
+            ]
         ]
