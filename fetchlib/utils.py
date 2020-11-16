@@ -1,4 +1,5 @@
 import json
+from typing import Iterable
 
 import pandas as pd
 
@@ -40,8 +41,16 @@ class BP:
 
 
 class Collection:
-    def __init__(self, prints):
+
+    def __init__(self, prints: Iterable[BP]):
         self.prints = {p.name: p for p in prints}
+
+    def __repr__(self):
+        return str(self.prints)
+
+    def add(self, prints: Iterable[BP]):
+        for p in prints:
+            self.prints[p.name] = p
 
     def to_dataframe(self):
         lst = self.prints.values()
@@ -58,9 +67,6 @@ class Collection:
             }
         )
 
-    def __repr__(self):
-        return str(self.prints)
-
 
 # Impact of overall setup: facility type + rig + environment
 efficiency_rigs = {
@@ -71,26 +77,13 @@ efficiency_rigs = {
     Classes.ADVANCED_CAPITAL_COMPONENT:0.958,
     'capital_advanced_ship':0.956}
 
-def components(): 
+def components():
     with open('fetchlib/blueprints/components.json') as f:
         d = json.load(f)
     for tp, lst in d.items():
         for name in lst:
             yield BP(name, 0.9,0.8,p_type=tp)
 
-hecate_bpcs = [
-    BP("Hecate", 0.99, 0.92, runs=7, p_type="small_advanced_ship"),
-]
 
-sabre_bpcs = []
-sabre_bpcs.append(BP("Sabre", 0.97, 0.92, runs=5, p_type="small_advanced_ship"))
-sabre_bpcs.append(BP("Thrasher", 0.9, 0.8, p_type="small_basic_ship"))
+my_collection = Collection([*components()])
 
-anshar_bpcs = []
-anshar_bpcs.append(BP("Anshar", 0.95, 0.92, runs=1, p_type="capital_advanced_ship"))
-anshar_bpcs.append(BP("Obelisk", 0.9, 0.8, p_type="capital_basic_ship"))
-
-
-
-
-my_collection = Collection(hecate_bpcs + sabre_bpcs + anshar_bpcs + [*components()])
