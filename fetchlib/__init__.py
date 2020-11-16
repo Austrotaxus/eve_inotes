@@ -54,13 +54,20 @@ def enrich_collection(col_df):
 def count_required(step):
     def price_in_materials(x):
         run_size = np.minimum(x.quantity, x.run)
-        jobs_required = (np.ceil(x.quantity / run_size)).astype("int32")
+        jobs_required = (np.floor(x.quantity / run_size)).astype("int32")
         # 4 production
         if x.activityID == 1:
             run_price = int(np.ceil(x.quantity_materials * run_size * x.me))
             r_req = jobs_required * run_size
             run_price = np.maximum(run_price, run_size)
-            run_price = int(np.ceil(run_price * (jobs_required)))
+
+            trim_size =  x.quantity - run_size*jobs_required
+            trim_price = int(np.ceil(x.quantity_materials * trim_size * x.me))
+            trim_price = np.maximum(trim_price,trim_size)
+
+            # FIXME Need some testings
+            run_price = (run_price * jobs_required) + trim_size
+
         # For reaction
         elif x.activityID == 11:
             r_req = int(np.ceil((x.quantity / x.quantity_product)))
@@ -113,9 +120,7 @@ def ultimate_decompose(product, run_size):
     assert product in types["typeName"].values, "No such product in database!"
     init_table = types[types["typeName"] == product]
     init_table = init_table[["typeID"]]
-    init_table["quantity"] = run_size + (
-        -run_size % my_collection.prints[product].runs
-    )
+    init_table["quantity"] = run_size
 
     atomic = pd.DataFrame(
         [], columns=["typeID", "quantity", "basePrice"]
