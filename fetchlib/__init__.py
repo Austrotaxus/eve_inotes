@@ -3,12 +3,10 @@ import os
 import pandas as pd
 import numpy as np
 
-from .utils import my_collection, NON_PRODUCTABLE
-from .importer import Importer
+from .setup import Setup
 
-db_importer = Importer()
-
-CACHED_TABLES = db_importer.tables
+setup = Setup()
+CACHED_TABLES = setup.importer.tables
 
 
 def indexed_types():
@@ -23,7 +21,7 @@ def withdrawed_products():
     res = CACHED_TABLES["products"]
     types = norm_types()
     res = res[res["activityID"].isin((1, 11))]
-    removes = types[types["typeName"].isin(NON_PRODUCTABLE)]["typeID"]
+    removes = types[types["typeName"].isin(setup.non_productables())]["typeID"]
     res = res[~res["typeID"].isin(removes)]
     return res
 
@@ -106,7 +104,11 @@ def append_prices(step):
 
 
 def ultimate_decompose(product, run_size):
-    collection = enrich_collection(my_collection.to_dataframe())
+    base_col_df = setup.collection.to_dataframe_with_mods(
+        setup.me_mods(),
+        setup.te_mods(),
+    )
+    collection = enrich_collection(base_col_df)
     types = norm_types()
     assert product in types["typeName"].values, "No such product in database!"
     init_table = types[types["typeName"] == product]

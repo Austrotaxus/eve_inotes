@@ -3,14 +3,6 @@ from typing import Iterable
 
 import pandas as pd
 
-NON_PRODUCTABLE = {
-    "Nitrogen Fuel Block Blueprint",
-    "Hydrogen Fuel Block Blueprint",
-    "Helium Fuel Block Blueprint",
-    "Oxygen Fuel Block Blueprint",
-    "R.A.M.- Starship Tech Blueprint",
-}
-
 
 class Classes:
     ADVANCED_COMPONENT = "advanced_component"
@@ -39,7 +31,7 @@ class BP:
         runs=None,
     ):
         self.name = name
-        self.me = me * efficiency_mods.get(p_type, 1.0)
+        self.me = me
         self.te = te
         self.runs = runs if runs else 2 ** 20
         self.p_type = p_type
@@ -67,11 +59,12 @@ class Collection:
         for p in prints:
             self.prints[p.name] = p
 
-    def to_dataframe(self):
+    # return dataframe with respects to efficiency
+    def to_dataframe_with_mods(self, me_mods={}, te_mods={}):
         lst = self.prints.values()
         names = (p.name for p in lst)
-        mes = (p.me for p in lst)
-        tes = (p.te for p in lst)
+        mes = (p.me * me_mods.get(p.p_type, 1.0) for p in lst)
+        tes = (p.te * te_mods.get(p.p_type, 1.0) for p in lst)
         runs = (p.runs for p in lst)
         return pd.DataFrame(
             data={
@@ -135,14 +128,3 @@ CLASSES_GROUPS = {
     ],
     Classes.STRUCTURE_COMPONENT: [groups_ids["structure"]],
 }
-
-
-def components():
-    with open("fetchlib/blueprints/components.json") as f:
-        d = json.load(f)
-    for tp, lst in d.items():
-        for name in lst:
-            yield BP(name, 0.9, 0.8, p_type=tp)
-
-
-my_collection = Collection([*components()])
