@@ -4,6 +4,8 @@ import pandas as pd
 import requests
 from pathlib import Path
 
+from fetchlib.utils import CLASSES_GROUPS
+
 PATH = Path("./db/")
 DB_NAME = "eve.db"
 OUTPUT_FILENAME = "eve.db.bz2file"
@@ -27,13 +29,26 @@ class Importer(metaclass=ImporterSingleton):
     def __init__(self):
 
         self.db = PATH / DB_NAME
-
         if not (PATH / DB_NAME).exists():
             self.__download_db()
             self.__bunzip2()
-
         self.conn = sqlite3.connect(self.db)
         self.__cache_tables()
+
+    def __get_group_content_names(self, group_id):
+        return pd.read_sql_query(
+            "select * from invTypes where marketGroupID == {} ".format(
+                group_id
+            ),
+            self.conn,
+        )["typeName"]
+
+    def __get_class_contents(self, classname):
+        ids = CLASSES_GROUPS[classname]
+        res = []
+        for i in ids:
+            res.extend(list(self.__get_group_content_names(i)))
+        return res
 
     def __cache_tables(self):
         types_q = """select  * from  invTypes """
@@ -47,6 +62,10 @@ class Importer(metaclass=ImporterSingleton):
             "products": pd.read_sql_query(products_q, self.conn),
             "materials": pd.read_sql_query(materials_q, self.conn),
             "marketgroups": pd.read_sql_query(marketgroups_q, self.conn),
+        }
+        self.component_by_classes = {
+            key: self.__get_class_contents(key)
+            for key in CLASSES_GROUPS.keys()
         }
 
     def __download_db(self):
@@ -86,7 +105,7 @@ class Importer(metaclass=ImporterSingleton):
                     for data in iter(lambda: bz2file.read(100 * 1024), b""):
                         unzipped_file.write(decompressor.decompress(data))
         except Exception as e:
-            print(ste(e))
+            print(str(e))
 
         print(
             "Succesfully finished decompression: source: {},  dest: {}".format(
