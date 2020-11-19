@@ -1,12 +1,21 @@
 import sqlite3
 import os
+import pickle
 import pandas as pd
 import numpy as np
 
-from .setup import Setup
 
-setup = Setup()
-CACHED_TABLES = setup.importer.tables
+from .setup import Setup, importer
+
+try:
+    with open("fetchlib/setups/main_setup.pkl", "rb") as f:
+        setup = pickle.load(f)
+except Exception as e:
+    print(e)
+    setup = Setup()
+
+
+CACHED_TABLES = importer.tables
 
 
 def indexed_types():
@@ -104,7 +113,7 @@ def append_prices(step):
 
 
 def ultimate_decompose(product, run_size):
-    base_col_df = setup.collection.to_dataframe_with_mods(
+    base_col_df = setup.collection.to_df(
         setup.me_mods(),
         setup.te_mods(),
     )

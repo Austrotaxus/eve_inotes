@@ -4,7 +4,7 @@ from typing import Iterable
 import pandas as pd
 
 
-class Classes:
+class ProductionClasses:
     ADVANCED_COMPONENT = "advanced_component"
     BASIC_CAPITAL_COMPONENT = "basic_capital_component"
     ADVANCED_CAPITAL_COMPONENT = "advanced_capital_component"
@@ -19,6 +19,19 @@ class Classes:
     BASIC_SMALL_SHIP = "basic_small_ship"
     AMMO = "ammo"
     DRONE_OR_FIGHTER = "drone_or_fighter"
+
+
+class CitadelTypes:
+    ASTRAHUS = "Astrahus"
+    RAITARU = "Raitaru"
+    ATHANOR = "Athanor"
+
+
+class SpaceTypes:
+    HIGHSES = "highsec"
+    LOWSEC = "lowsec"
+    NULL = "null"
+    WH = "wh"
 
 
 class BP:
@@ -60,7 +73,7 @@ class Collection:
             self.prints[p.name] = p
 
     # return dataframe with respects to efficiency
-    def to_dataframe_with_mods(self, me_mods={}, te_mods={}):
+    def to_df(self, me_mods={}, te_mods={}):
         lst = self.prints.values()
         names = (p.name for p in lst)
         mes = (p.me * me_mods.get(p.p_type, 1.0) for p in lst)
@@ -78,14 +91,14 @@ class Collection:
 
 # Impact of overall setup: facility type + rig + environment
 efficiency_mods = {
-    Classes.ADVANCED_COMPONENT: 0.958,
-    Classes.ADVANCED_MEDIUM_SHIP: 0.958,
-    Classes.ADVANCED_SMALL_SHIP: 0.958,
-    Classes.ADVANCED_CAPITAL_COMPONENT: 0.958,
-    Classes.ADVANCED_CAPITAL_SHIP: 0.956,
-    Classes.BASIC_CAPITAL_SHIP: 0.958,
-    Classes.BASIC_LARGE_SHIP: 0.958,
-    Classes.BASIC_CAPITAL_COMPONENT: 0.958,
+    ProductionClasses.ADVANCED_COMPONENT: 0.958,
+    ProductionClasses.ADVANCED_MEDIUM_SHIP: 0.958,
+    ProductionClasses.ADVANCED_SMALL_SHIP: 0.958,
+    ProductionClasses.ADVANCED_CAPITAL_COMPONENT: 0.958,
+    ProductionClasses.ADVANCED_CAPITAL_SHIP: 0.956,
+    ProductionClasses.BASIC_CAPITAL_SHIP: 0.958,
+    ProductionClasses.BASIC_LARGE_SHIP: 0.958,
+    ProductionClasses.BASIC_CAPITAL_COMPONENT: 0.958,
 }
 
 
@@ -108,7 +121,7 @@ groups_ids = {
 
 
 CLASSES_GROUPS = {
-    Classes.ADVANCED_COMPONENT: [
+    ProductionClasses.ADVANCED_COMPONENT: [
         groups_ids["amarr"],
         groups_ids["caldari"],
         groups_ids["gallente"],
@@ -117,14 +130,14 @@ CLASSES_GROUPS = {
         groups_ids["sleeper"],
         groups_ids["fuel"],  # FIXME need to check
     ],
-    Classes.BASIC_CAPITAL_COMPONENT: [
+    ProductionClasses.BASIC_CAPITAL_COMPONENT: [
         groups_ids["basic_capital"],
     ],
-    Classes.ADVANCED_CAPITAL_COMPONENT: [
+    ProductionClasses.ADVANCED_CAPITAL_COMPONENT: [
         groups_ids["advanced_amarr_capital"],
         groups_ids["advanced_caldari_capital"],
         groups_ids["advanced_gallente_capital"],
         groups_ids["advanced_minmatar_capital"],
     ],
-    Classes.STRUCTURE_COMPONENT: [groups_ids["structure"]],
+    ProductionClasses.STRUCTURE_COMPONENT: [groups_ids["structure"]],
 }
