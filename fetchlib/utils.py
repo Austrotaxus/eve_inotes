@@ -4,7 +4,7 @@ from typing import Iterable
 import pandas as pd
 
 
-class ProductionClasses:
+class ProductionClasses(object):
     ADVANCED_COMPONENT = "advanced_component"
     BASIC_CAPITAL_COMPONENT = "basic_capital_component"
     ADVANCED_CAPITAL_COMPONENT = "advanced_capital_component"
@@ -28,10 +28,9 @@ class CitadelTypes:
 
 
 class SpaceTypes:
-    HIGHSES = "highsec"
+    HIGHSEC = "highsec"
     LOWSEC = "lowsec"
-    NULL = "null"
-    WH = "wh"
+    NULL_WH = "null_wh"
 
 
 class BP:
@@ -141,3 +140,38 @@ CLASSES_GROUPS = {
     ],
     ProductionClasses.STRUCTURE_COMPONENT: [groups_ids["structure"]],
 }
+
+
+class Rig:
+    def __init__(self, affected, impact):
+        self.affected = affected
+        self.impact = impact
+
+    def represent_te(self, space_type):
+        pass
+
+    def represent_me(self, space_type):
+        try:
+            res = {a: self.impact["me"][space_type] for a in self.affected}
+        except KeyError:
+            res = {a: 1.0 for a in self.affected}
+
+        return res
+
+
+default_t1 = {
+    SpaceTypes.HIGHSEC: 1.0 - 0.02,
+    SpaceTypes.LOWSEC: 1.0 - 0.02 * 1.9,
+    SpaceTypes.NULL_WH: 1.0 - 0.02 * 2.1,
+}
+
+default_t2 = {}
+
+
+class Rigs:
+    ADV_ME_COMP_1 = Rig(
+        [ProductionClasses.ADVANCED_COMPONENT], impact={"me": default_t1}
+    )
+    ADV_ME_SMALL_1 = Rig(
+        [ProductionClasses.ADVANCED_SMALL_SHIP], impact={"me": default_t1}
+    )
