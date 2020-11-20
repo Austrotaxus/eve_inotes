@@ -4,7 +4,16 @@ from typing import Iterable
 import pandas as pd
 
 
-class ProductionClasses(object):
+class MetaCollection(type):
+    def fields(cls):
+        return list(cls.to_dict().keys())
+
+    def to_dict(cls):
+        d = cls.__dict__
+        return {k: v for k, v in d.items() if not k.startswith("__")}
+
+
+class ProductionClasses(metaclass=MetaCollection):
     ADVANCED_COMPONENT = "advanced_component"
     BASIC_CAPITAL_COMPONENT = "basic_capital_component"
     ADVANCED_CAPITAL_COMPONENT = "advanced_capital_component"
@@ -21,13 +30,13 @@ class ProductionClasses(object):
     DRONE_OR_FIGHTER = "drone_or_fighter"
 
 
-class CitadelTypes:
+class CitadelTypes(metaclass=MetaCollection):
     ASTRAHUS = "Astrahus"
     RAITARU = "Raitaru"
     ATHANOR = "Athanor"
 
 
-class SpaceTypes:
+class SpaceTypes(metaclass=MetaCollection):
     HIGHSEC = "highsec"
     LOWSEC = "lowsec"
     NULL_WH = "null_wh"
@@ -60,7 +69,7 @@ class BP:
         )
 
 
-class Collection:
+class BlueprintCollection:
     def __init__(self, prints: Iterable[BP]):
         self.prints = {p.name: p for p in prints}
 
@@ -168,7 +177,7 @@ default_t1 = {
 default_t2 = {}
 
 
-class Rigs:
+class Rigs(metaclass=MetaCollection):
     ADV_ME_COMP_1 = Rig(
         [ProductionClasses.ADVANCED_COMPONENT], impact={"me": default_t1}
     )

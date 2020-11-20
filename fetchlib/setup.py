@@ -3,7 +3,7 @@ from pathlib import Path
 
 from fetchlib.importer import Importer
 from fetchlib.utils import (
-    Collection,
+    BlueprintCollection,
     BP,
     ProductionClasses,
     SpaceTypes,
@@ -20,9 +20,9 @@ class Setup:
     ):
         self.citadel_type = CitadelTypes.RAITARU
         self.space_type = SpaceTypes.NULL_WH
-        self.rig_set = [Rigs.ADV_ME_COMP_1, Rigs.ADV_ME_SMALL_1]
+        self.rig_set = [Rigs.ADV_ME_COMP_1]  # , Rigs.ADV_ME_SMALL_1]
         self.skills = None
-        self.collection = Collection(self.initial_collection())
+        self.collection = BlueprintCollection(self.initial_collection())
         self._non_productables = {
             "Nitrogen Fuel Block Blueprint",
             "Hydrogen Fuel Block Blueprint",
@@ -33,12 +33,7 @@ class Setup:
 
     @classmethod
     def default_efficiences(cls):
-        e = ProductionClasses()
-        members = [
-            attr
-            for attr in dir(e)
-            if not callable(getattr(e, attr)) and not attr.startswith("__")
-        ]
+        members = ProductionClasses.fields()
         res = {m: 1.0 for m in members}
         return res
 
