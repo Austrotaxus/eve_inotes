@@ -63,8 +63,7 @@ def count_required(step):
             trim_price = int(np.ceil(x.quantity_materials * trim_size * x.me))
             trim_price = np.maximum(trim_price, trim_size)
 
-            # FIXME Need some testings
-            run_price = (run_price * jobs_required) + trim_size
+            run_price = (run_price * jobs_required) + trim_price
 
         # For reaction
         elif x.activityID == 11:
