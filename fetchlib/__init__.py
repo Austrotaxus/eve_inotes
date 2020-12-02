@@ -186,9 +186,15 @@ def create_production_schema(product, run_size):
         v["runs_required"] = v["quantity"] / v["quantity_product"]
         yield v[
             [
-                "typeID",
                 "typeName",
                 "quantity",
                 "runs_required",
             ]
         ]
+
+
+def output_production_chema(product, run_size):
+    for i, table in enumerate(create_production_schema(product, run_size)):
+        print("Step {} is: ".format(i))
+        print(table.to_string(index=False))
+    print()
