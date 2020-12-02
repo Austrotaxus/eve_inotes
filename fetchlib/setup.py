@@ -63,3 +63,7 @@ class Setup:
 
     def te_mods(self):
         return {}
+
+    def save_setup(self):
+        with open("fetchlib/setups/main_setup.pkl", "wb") as f:
+            pickle.dump(self, f)
