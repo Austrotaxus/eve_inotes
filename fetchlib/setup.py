@@ -1,3 +1,5 @@
+from typing import Iterable
+
 import pickle
 from pathlib import Path
 
@@ -33,7 +35,7 @@ class Setup:
 
     @classmethod
     def default_efficiences(cls):
-        members = ProductionClasses.fields()
+        members = ProductionClasses.to_dict().values()
         res = {m: 1.0 for m in members}
         return res
 
@@ -58,11 +60,17 @@ class Setup:
 
         for key in resulting_dict.keys():
             resulting_dict[key] -= citadel_impact
-
         return resulting_dict
 
     def te_mods(self):
         return {}
+
+    def add_to_collection(self, prints: Iterable[BP]):
+        names = [p.name for p in prints]
+        diff = set(names) - set(importer.tables["types"]["typeName"])
+        if diff:
+            raise ValueError("Unknow typenames:{}".format(diff))
+        self.collection.add(prints)
 
     def save_setup(self):
         with open("fetchlib/setups/main_setup.pkl", "wb") as f:

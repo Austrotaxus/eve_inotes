@@ -1,7 +1,13 @@
 from PyInquirer import style_from_dict, prompt
-
 from fetchlib import setup, ultimate_decompose, output_production_chema
-from fetchlib.utils import SpaceTypes, CitadelTypes, Rigs
+from fetchlib.utils import (
+    SpaceTypes,
+    CitadelTypes,
+    Rigs,
+    BP,
+    ProductionClasses,
+)
+import os
 
 
 def show_setup():
@@ -12,6 +18,7 @@ def show_setup():
     print(setup.citadel_type)
     print("Space: ")
     print(setup.space_type)
+    return "Shown setup"
 
 
 def set_citadel_type():
@@ -26,6 +33,7 @@ def set_citadel_type():
     }
     answer = prompt(activity_prompt)
     setup.citadel_type = answer["citadel"]
+    return (activity_prompt, answer)
 
 
 def set_space_type():
@@ -40,6 +48,7 @@ def set_space_type():
     }
     answer = prompt(activity_prompt)
     setup.space_type = answer["space"]
+    return activity_prompt, answer
 
 
 def select_rigs():
@@ -57,18 +66,84 @@ def select_rigs():
     }
     answer = prompt(activity_prompt)
     setup.rig_set = [possible[a] for a in answer["rigs"]]
+    return (activity_prompt, answer)
 
 
-def add_rig():
-    pass
+def set_blueprint():
+    def is_float(arg):
+        try:
+            float(arg)
+        except Exception:
+            return False
+        return True
+
+    def is_int(arg):
+        try:
+            int(arg)
+        except Exception:
+            return False
+        return True
+
+    questions = [
+        {
+            "type": "input",
+            "name": "type_name",
+            "message": "Type Name",
+        },
+        {
+            "type": "input",
+            "name": "te",
+            "message": "Time required: (From 0.8 to 1.0)",
+            "validate": lambda x: is_float(x)
+            and float(x) >= 0.8
+            and float(x) <= 1.0,
+        },
+        {
+            "type": "input",
+            "name": "me",
+            "message": "Materials required? (From 0.9 to 1.0)",
+            "validate": lambda x: is_float(x)
+            and float(x) >= 0.9
+            and float(x) <= 1.0,
+        },
+        {
+            "type": "input",
+            "name": "runs",
+            "default": "0",
+            "message": "Runs: (Leave unfilled for BPO)",
+            "validate": lambda x: is_int(x) and int(x) >= 0,
+        },
+        {
+            "type": "list",
+            "name": "p_type",
+            "message": "Product Type?",
+            "choices": [
+                {"name": name} for name in ProductionClasses.to_dict().values()
+            ],
+        },
+    ]
+    answers = prompt(questions)
+    bp = BP(
+        name=answers["type_name"],
+        me=float(answers["me"]),
+        te=float(answers["te"]),
+        runs=int(answers["runs"]),
+        p_type=answers["p_type"],
+    )
+    setup.add_to_collection([bp])
+    return (questions, answers)
 
 
-def remove_rig():
-    pass
-
-
-def set_bpc_params():
-    pass
+def show_collection_blueprint():
+    question = {
+        "type": "input",
+        "name": "bpc_name",
+        "message": "Insert BPC name",
+    }
+    answer = prompt(question)
+    no_bpc_msg = "No such BPC in collection!"
+    print(setup.collection.prints.get(answer["bpc_name"], no_bpc_msg))
+    return (question, answer)
 
 
 def add_non_productables():
@@ -90,6 +165,7 @@ def evaluate_production_schema():
     ]
     answers = prompt(questions)
     output_production_chema(answers["product"], int(answers["runs"]))
+    return answers
 
 
 def calculate_materials():
@@ -105,6 +181,11 @@ def main():
     choose_activity_cycle()
 
 
+def save_and_exit():
+    setup.save_setup()
+    return None
+
+
 def activity_set():
     return {
         "Calculate materals": calculate_materials,
@@ -113,28 +194,30 @@ def activity_set():
         "Choose citadel type": set_citadel_type,
         "Select rig set": select_rigs,
         "Show setup": show_setup,
-        "Exit": None,
+        "Show blueprint": show_collection_blueprint,
+        "Set blueprint": set_blueprint,
+        "Save and exit": save_and_exit,
     }
 
 
+# Main application loop
 def choose_activity_cycle():
     answer = {}
     while True:
+        os.system("cls" if os.name == "nt" else "clear")
         d = activity_set()
         activity_prompt = {
             "type": "list",
             "name": "activity",
             "message": "What would you like to do?",
-            # 'choices': list(d.items())
             "choices": [{"name": name} for name in d.keys()],
         }
         answer = prompt(activity_prompt)
 
-        if not d[answer["activity"]]:
-            setup.save_setup()
+        result = d[answer["activity"]]()
+        if not result:
             break
-
-        d[answer["activity"]]()
+        input()
 
 
 if __name__ == "__main__":
