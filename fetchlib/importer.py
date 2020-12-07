@@ -32,7 +32,7 @@ class Importer(metaclass=ImporterSingleton):
         if not (PATH / DB_NAME).exists():
             self.__download_db()
             self.__bunzip2()
-        self.conn = sqlite3.connect(self.db)
+        self.conn = sqlite3.connect(str(self.db))
         self.__cache_tables()
 
     def __get_group_content_names(self, group_id):
