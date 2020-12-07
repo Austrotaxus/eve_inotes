@@ -1,11 +1,17 @@
 from PyInquirer import style_from_dict, prompt
 
 from fetchlib import setup, ultimate_decompose, output_production_chema
-from fetchlib.utils import SpaceTypes, CitadelTypes
+from fetchlib.utils import SpaceTypes, CitadelTypes, Rigs
 
 
-def change_setup():
-    pass
+def show_setup():
+    print("Rigs: ")
+    for r in setup.rig_set:
+        print(r)
+    print("Citadel: ")
+    print(setup.citadel_type)
+    print("Space: ")
+    print(setup.space_type)
 
 
 def set_citadel_type():
@@ -34,6 +40,23 @@ def set_space_type():
     }
     answer = prompt(activity_prompt)
     setup.space_type = answer["space"]
+
+
+def select_rigs():
+    current = setup.rig_set
+    possible = Rigs.to_dict()
+    activity_prompt = {
+        "type": "checkbox",
+        "name": "rigs",
+        "message": "What would you like to do?"
+        "Current type is: {}".format(current),
+        "choices": [
+            {"name": name, "checked": value in current}
+            for name, value in possible.items()
+        ],
+    }
+    answer = prompt(activity_prompt)
+    setup.rig_set = [possible[a] for a in answer["rigs"]]
 
 
 def add_rig():
@@ -88,7 +111,9 @@ def activity_set():
         "Evaluate production schema": evaluate_production_schema,
         "Choose space type": set_space_type,
         "Choose citadel type": set_citadel_type,
-        "Exit!": None,
+        "Select rig set": select_rigs,
+        "Show setup": show_setup,
+        "Exit": None,
     }
 
 

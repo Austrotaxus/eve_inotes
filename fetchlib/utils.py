@@ -4,16 +4,18 @@ from typing import Iterable
 import pandas as pd
 
 
-class MetaCollection(type):
+class BaseCollection:
+    @classmethod
     def fields(cls):
         return list(cls.to_dict().keys())
 
+    @classmethod
     def to_dict(cls):
         d = cls.__dict__
         return {k: v for k, v in d.items() if not k.startswith("__")}
 
 
-class ProductionClasses(metaclass=MetaCollection):
+class ProductionClasses(BaseCollection):
     ADVANCED_COMPONENT = "advanced_component"
     BASIC_CAPITAL_COMPONENT = "basic_capital_component"
     ADVANCED_CAPITAL_COMPONENT = "advanced_capital_component"
@@ -30,13 +32,13 @@ class ProductionClasses(metaclass=MetaCollection):
     DRONE_OR_FIGHTER = "drone_or_fighter"
 
 
-class CitadelTypes(metaclass=MetaCollection):
+class CitadelTypes(BaseCollection):
     ASTRAHUS = "Astrahus"
     RAITARU = "Raitaru"
     ATHANOR = "Athanor"
 
 
-class SpaceTypes(metaclass=MetaCollection):
+class SpaceTypes(BaseCollection):
     HIGHSEC = "highsec"
     LOWSEC = "lowsec"
     NULL_WH = "null_wh"
@@ -97,19 +99,6 @@ class BlueprintCollection:
         )
 
 
-# Impact of overall setup: facility type + rig + environment
-efficiency_mods = {
-    ProductionClasses.ADVANCED_COMPONENT: 0.958,
-    ProductionClasses.ADVANCED_MEDIUM_SHIP: 0.958,
-    ProductionClasses.ADVANCED_SMALL_SHIP: 0.958,
-    ProductionClasses.ADVANCED_CAPITAL_COMPONENT: 0.958,
-    ProductionClasses.ADVANCED_CAPITAL_SHIP: 0.956,
-    ProductionClasses.BASIC_CAPITAL_SHIP: 0.958,
-    ProductionClasses.BASIC_LARGE_SHIP: 0.958,
-    ProductionClasses.BASIC_CAPITAL_COMPONENT: 0.958,
-}
-
-
 # ids of groups in eve database
 groups_ids = {
     "amarr": 802,
@@ -152,9 +141,10 @@ CLASSES_GROUPS = {
 
 
 class Rig:
-    def __init__(self, affected, impact):
+    def __init__(self, affected, impact, name="undefined"):
         self.affected = affected
         self.impact = impact
+        self.name = name
 
     def represent_te(self, space_type):
         pass
@@ -167,6 +157,16 @@ class Rig:
 
         return res
 
+    def __str__(self):
+        return self.name
+
+    def __eq__(self, other):
+        if isinstance(other, Rig):
+            return (
+                self.affected == other.affected and self.impact == other.impact
+            )
+        return False
+
 
 default_t1 = {
     SpaceTypes.HIGHSEC: 1.0 - 0.02,
@@ -177,10 +177,25 @@ default_t1 = {
 default_t2 = {}
 
 
-class Rigs(metaclass=MetaCollection):
+class Rigs(BaseCollection):
     ADV_ME_COMP_1 = Rig(
-        [ProductionClasses.ADVANCED_COMPONENT], impact={"me": default_t1}
+        [ProductionClasses.ADVANCED_COMPONENT],
+        impact={"me": default_t1},
+        name="M-set advanced component ME t1",
     )
     ADV_ME_SMALL_1 = Rig(
-        [ProductionClasses.ADVANCED_SMALL_SHIP], impact={"me": default_t1}
+        [ProductionClasses.ADVANCED_SMALL_SHIP],
+        impact={"me": default_t1},
+        name="M-set advanced small ship ME t1",
     )
+
+    ADV_ME_MEDIUM_1 = Rig(
+        [ProductionClasses.ADVANCED_MEDIUM_SHIP],
+        impact={"me": default_t1},
+        name="M-set advanced medium ship ME t1",
+    )
+
+    @classmethod
+    def to_dict(cls):
+        d = cls.__dict__
+        return {v.name: v for k, v in d.items() if type(v) == Rig}
