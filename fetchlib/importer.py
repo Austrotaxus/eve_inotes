@@ -56,10 +56,17 @@ class Importer(metaclass=ImporterSingleton):
         products_q = """select * from industryActivityProducts"""
         materials_q = """select * from industryActivityMaterials"""
         marketgroups_q = """select * from invMarketGroups"""
+
+        # Remove 'test reaction' from tables
+        activity = pd.read_sql_query(activities_q, self.conn)
+        activity = activity[activity["typeID"] != 45732]
+        products = pd.read_sql_query(products_q, self.conn)
+        products = products[products["typeID"] != 45732]
+
         self.tables = {
             "types": pd.read_sql_query(types_q, self.conn),
-            "activity": pd.read_sql_query(activities_q, self.conn),
-            "products": pd.read_sql_query(products_q, self.conn),
+            "activity": activity,
+            "products": products,
             "materials": pd.read_sql_query(materials_q, self.conn),
             "marketgroups": pd.read_sql_query(marketgroups_q, self.conn),
         }
