@@ -100,7 +100,7 @@ class BlueprintCollection:
 
 
 # ids of groups in eve database
-groups_ids = {
+comp_gids = {
     "amarr": 802,
     "caldari": 803,
     "gallente": 1889,
@@ -116,27 +116,34 @@ groups_ids = {
     "structure": 1865,
 }
 
+ship_gids = {}
 
 CLASSES_GROUPS = {
     ProductionClasses.ADVANCED_COMPONENT: [
-        groups_ids["amarr"],
-        groups_ids["caldari"],
-        groups_ids["gallente"],
-        groups_ids["minmatar"],
-        groups_ids["ram"],
-        groups_ids["sleeper"],
-        groups_ids["fuel"],  # FIXME need to check
+        comp_gids["amarr"],
+        comp_gids["caldari"],
+        comp_gids["gallente"],
+        comp_gids["minmatar"],
+        comp_gids["ram"],
+        comp_gids["sleeper"],
+        comp_gids["fuel"],  # FIXME need to check
     ],
     ProductionClasses.BASIC_CAPITAL_COMPONENT: [
-        groups_ids["basic_capital"],
+        comp_gids["basic_capital"],
     ],
     ProductionClasses.ADVANCED_CAPITAL_COMPONENT: [
-        groups_ids["advanced_amarr_capital"],
-        groups_ids["advanced_caldari_capital"],
-        groups_ids["advanced_gallente_capital"],
-        groups_ids["advanced_minmatar_capital"],
+        comp_gids["advanced_amarr_capital"],
+        comp_gids["advanced_caldari_capital"],
+        comp_gids["advanced_gallente_capital"],
+        comp_gids["advanced_minmatar_capital"],
     ],
-    ProductionClasses.STRUCTURE_COMPONENT: [groups_ids["structure"]],
+    ProductionClasses.STRUCTURE_COMPONENT: [comp_gids["structure"]],
+    ProductionClasses.BASIC_LARGE_SHIP: [
+        78,
+        79,
+        80,
+        81,
+    ],
 }
 
 
@@ -193,6 +200,12 @@ class Rigs(BaseCollection):
         [ProductionClasses.ADVANCED_MEDIUM_SHIP],
         impact={"me": default_t1},
         name="M-set advanced medium ship ME t1",
+    )
+
+    ADV_ME_LARGE_1 = Rig(
+        [ProductionClasses.ADVANCED_LARGE_SHIP],
+        impact={"me": default_t1},
+        name="M-set advanced large ship ME t1",
     )
 
     @classmethod
