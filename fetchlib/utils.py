@@ -185,30 +185,18 @@ default_t2 = {}
 
 
 class Rigs(BaseCollection):
-    ADV_ME_COMP_1 = Rig(
-        [ProductionClasses.ADVANCED_COMPONENT],
-        impact={"me": default_t1},
-        name="M-set advanced component ME t1",
-    )
-    ADV_ME_SMALL_1 = Rig(
-        [ProductionClasses.ADVANCED_SMALL_SHIP],
-        impact={"me": default_t1},
-        name="M-set advanced small ship ME t1",
-    )
-
-    ADV_ME_MEDIUM_1 = Rig(
-        [ProductionClasses.ADVANCED_MEDIUM_SHIP],
-        impact={"me": default_t1},
-        name="M-set advanced medium ship ME t1",
-    )
-
-    ADV_ME_LARGE_1 = Rig(
-        [ProductionClasses.ADVANCED_LARGE_SHIP],
-        impact={"me": default_t1},
-        name="M-set advanced large ship ME t1",
-    )
-
     @classmethod
     def to_dict(cls):
         d = cls.__dict__
         return {v.name: v for k, v in d.items() if type(v) == Rig}
+
+
+production_classes_dict = ProductionClasses.to_dict()
+me_m_set_rigs_dict = {}
+for field, value in production_classes_dict.items():
+    rig = Rig(
+        affected=[value],
+        impact={"me": default_t1},
+        name="M-set {} ME t1".format(value),
+    )
+    setattr(Rigs, field + "_ME_t1", rig)

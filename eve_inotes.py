@@ -188,7 +188,7 @@ def save_and_exit():
 
 def activity_set():
     return {
-        "Calculate materals": calculate_materials,
+        "Calculate materials": calculate_materials,
         "Evaluate production schema": evaluate_production_schema,
         "Choose space type": set_space_type,
         "Choose citadel type": set_citadel_type,
