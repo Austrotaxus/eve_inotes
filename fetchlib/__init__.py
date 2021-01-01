@@ -170,8 +170,8 @@ def ultimate_decompose(product, run_size):
     )
 
     a = a.join(types.set_index("typeID"), lsuffix="-atom_")[
-        ["quantity", "typeName"]
-    ]
+        ["typeName", "quantity"]
+    ].astype({"quantity": "int32"})
 
     return reversed(steps), a
 
