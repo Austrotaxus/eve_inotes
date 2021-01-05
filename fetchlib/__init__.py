@@ -217,13 +217,18 @@ def balance_runs(runs_required: Dict[str, float], lines: int):
     return lines
 
 
+def output(x):
+    print()
+    print(x)
+    print()
+
+
 def output_production_chema(product, run_size):
     for i, table in enumerate(create_production_schema(product, run_size)):
-        print("Step {} is: ".format(i))
-        print(table.to_csv(index=False, sep="\t"))
+        output("Step {} is: ".format(i))
+        output(table.to_csv(index=False, sep="\t"))
         if i > 0:
-            print("Balancing runs:")
+            output("Balancing runs:")
             d = table.set_index("typeName").to_dict()["runs_required"]
             for k, v in balance_runs(d, 20).items():
-                print(k, v)
-    print()
+                output((k, v))
