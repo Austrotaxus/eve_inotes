@@ -57,7 +57,7 @@ def count_required(step):
     def price_in_materials(x):
         run_size = np.minimum(x.quantity, x.run)
         jobs_required = (np.floor(x.quantity / run_size)).astype("int32")
-        # 4 production
+        # For production
         if x.activityID == 1:
             run_price = int(np.ceil(x.quantity_materials * run_size * x.me))
             r_req = jobs_required * run_size
@@ -122,7 +122,11 @@ def ultimate_decompose(product, run_size):
     )
     collection = enrich_collection(base_col_df)
     types = norm_types()
-    assert product in types["typeName"].values, "No such product in database!"
+
+    if product not in types["typeName"].values:
+        raise ValueError("No such product in database!")
+
+    # Init table is about root of our production
     init_table = types[types["typeName"] == product]
     init_table = init_table[["typeID"]]
     init_table["quantity"] = run_size
@@ -138,14 +142,14 @@ def ultimate_decompose(product, run_size):
         step = step.merge(collection, on="typeID", how="left").fillna(
             value={"me": 1, "te": 1, "run": 2 ** 10}
         )
+        # Add info to table to understand what we would need pn the next steps
+
         with_products = append_products(step)
         with_materials = append_materials(with_products)
         with_prices = append_prices(with_materials)
 
         step = with_prices
-
         step["quantity"], step["runs_required"] = count_required(step)
-
         step = step.groupby(step.index).sum()
 
         step = (
@@ -154,6 +158,7 @@ def ultimate_decompose(product, run_size):
             .rename({"index": "typeID"}, axis="columns")
         )
 
+        # Atomic is everything that couln't be produced and should be taken from environment
         atomic = atomic.append(
             step[~step["typeID"].isin(withdrawed_products()["productTypeID"])]
         )
@@ -166,27 +171,26 @@ def ultimate_decompose(product, run_size):
         if step.shape[0] == 0:
             break
 
-    a = (
+    materials = (
         atomic[["typeID", "quantity"]]
         .astype({"typeID": "int32"})
         .groupby("typeID")
         .sum()
     )
-
-    a = a.join(types.set_index("typeID"), lsuffix="-atom_")[
+    materials = materials.join(types.set_index("typeID"), lsuffix="-atom_")[
         ["typeName", "quantity"]
     ].astype({"quantity": "int32"})
 
-    return reversed(steps), a
+    return reversed(steps), materials
 
 
 def create_production_schema(product, run_size):
-    steps, ms = ultimate_decompose(product, run_size)
-    for s in steps:
-        if s.empty:
-            yield ms
+    steps, materials = ultimate_decompose(product, run_size)
+    for step in steps:
+        if step.empty:
+            yield materials
             continue
-        v = append_products(s).join(norm_types().set_index("typeID"))
+        v = append_products(step).join(norm_types().set_index("typeID"))
         v["runs_required"] = v["quantity"] / v["quantity_product"]
         yield v[
             [
@@ -198,23 +202,25 @@ def create_production_schema(product, run_size):
 
 
 def balance_runs(runs_required: Dict[str, float], lines: int):
-    l_distr = dict.fromkeys(runs_required.keys(), 1)
+    lines_distribution = dict.fromkeys(runs_required.keys(), 1)
     load = {}
     for i in range(len(runs_required), lines):
         for k in runs_required.keys():
-            load[k] = runs_required[k] / l_distr[k]
+            load[k] = runs_required[k] / lines_distribution[k]
         max_loaded = max(load.items(), key=operator.itemgetter(1))[0]
-        l_distr[max_loaded] += 1
-    lines = {}
-    for key, value in l_distr.items():
-        lines[key] = [0] * value
-        # Populate lines with basic values
-        for i in range(len(lines[key])):
-            lines[key][i] = floor(float(runs_required[key]) / l_distr[key])
+        lines_distribution[max_loaded] += 1
+    lines_load = {}
+    for key, value in lines_distribution.items():
+        lines_load[key] = [0] * value
+        # Populate lines_load with basic values
+        for i in range(len(lines_load[key])):
+            lines_load[key][i] = floor(
+                float(runs_required[key]) / lines_distribution[key]
+            )
         # Add insufficient runs to each line
-        for i in range(int(ceil(runs_required[key] - sum(lines[key])))):
-            lines[key][i] += 1
-    return lines
+        for i in range(int(ceil(runs_required[key] - sum(lines_load[key])))):
+            lines_load[key][i] += 1
+    return lines_load
 
 
 def output(x):
@@ -223,7 +229,7 @@ def output(x):
     print()
 
 
-def output_production_chema(product, run_size):
+def output_production_chema(product, run_size: int):
     for i, table in enumerate(create_production_schema(product, run_size)):
         output("Step {} is: ".format(i))
         output(table.to_csv(index=False, sep="\t"))
