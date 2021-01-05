@@ -49,7 +49,9 @@ class Setup:
         return self._non_productables
 
     def me_mods(self):
-        citadel_impact = (self.citadel_type in (CitadelTypes.RAITARU,)) * 0.01
+        citadel_impact = 1 - (
+            (self.citadel_type in (CitadelTypes.RAITARU,)) * 0.01
+        )
 
         resulting_dict = Setup.default_efficiences()
 
@@ -59,7 +61,7 @@ class Setup:
                 resulting_dict[affected] = percent
 
         for key in resulting_dict.keys():
-            resulting_dict[key] -= citadel_impact
+            resulting_dict[key] *= citadel_impact
         return resulting_dict
 
     def te_mods(self):
