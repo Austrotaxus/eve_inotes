@@ -1,6 +1,10 @@
-import sqlite3
+import operator
 import os
 import pickle
+from typing import Dict
+from math import floor, ceil
+
+import sqlite3
 import pandas as pd
 import numpy as np
 
@@ -193,8 +197,33 @@ def create_production_schema(product, run_size):
         ]
 
 
+def balance_runs(runs_required: Dict[str, float], lines: int):
+    l_distr = dict.fromkeys(runs_required.keys(), 1)
+    load = {}
+    for i in range(len(runs_required), lines):
+        for k in runs_required.keys():
+            load[k] = runs_required[k] / l_distr[k]
+        max_loaded = max(load.items(), key=operator.itemgetter(1))[0]
+        l_distr[max_loaded] += 1
+    lines = {}
+    for key, value in l_distr.items():
+        lines[key] = [0] * value
+        # Populate lines with basic values
+        for i in range(len(lines[key])):
+            lines[key][i] = floor(float(runs_required[key]) / l_distr[key])
+        # Add insufficient runs to each line
+        for i in range(int(ceil(runs_required[key] - sum(lines[key])))):
+            lines[key][i] += 1
+    return lines
+
+
 def output_production_chema(product, run_size):
     for i, table in enumerate(create_production_schema(product, run_size)):
         print("Step {} is: ".format(i))
-        print(table.to_string(index=False))
+        print(table.to_csv(index=False, sep="\t"))
+        if i > 0:
+            print("Balancing runs:")
+            d = table.set_index("typeName").to_dict()["runs_required"]
+            for k, v in balance_runs(d, 20).items():
+                print(k, v)
     print()
