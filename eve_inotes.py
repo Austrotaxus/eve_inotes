@@ -1,4 +1,7 @@
+import os
+
 from PyInquirer import style_from_dict, prompt
+
 from fetchlib import setup, ultimate_decompose, output_production_chema
 from fetchlib.utils import (
     SpaceTypes,
@@ -7,7 +10,6 @@ from fetchlib.utils import (
     BP,
     ProductionClasses,
 )
-import os
 
 
 def show_setup():
@@ -93,18 +95,18 @@ def set_blueprint():
         {
             "type": "input",
             "name": "te",
-            "message": "Time required: (From 0.8 to 1.0)",
+            "message": "Time efficiency: (From 0.0 to 0.2)",
             "validate": lambda x: is_float(x)
-            and float(x) >= 0.8
-            and float(x) <= 1.0,
+            and float(x) >= 0.0
+            and float(x) <= 0.2,
         },
         {
             "type": "input",
             "name": "me",
-            "message": "Materials required? (From 0.9 to 1.0)",
+            "message": "Material efficienciy: (From 0.0 to 0.1)",
             "validate": lambda x: is_float(x)
-            and float(x) >= 0.9
-            and float(x) <= 1.0,
+            and float(x) >= 0.0
+            and float(x) <= 0.1,
         },
         {
             "type": "input",

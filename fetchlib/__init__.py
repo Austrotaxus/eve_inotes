@@ -49,7 +49,7 @@ def alterated_materials():
 def enrich_collection(col_df):
     collection_df = col_df.merge(
         norm_types(), left_on="productName", right_on="typeName"
-    )[["typeName", "typeID", "run", "me", "te"]]
+    )[["typeName", "typeID", "run", "me_impact", "te_impact"]]
     return collection_df
 
 
@@ -59,12 +59,16 @@ def count_required(step):
         jobs_required = (np.floor(x.quantity / run_size)).astype("int32")
         # For production
         if x.activityID == 1:
-            run_price = int(np.ceil(x.quantity_materials * run_size * x.me))
+            run_price = int(
+                np.ceil(x.quantity_materials * run_size * x.me_impact)
+            )
             r_req = jobs_required * run_size
             run_price = np.maximum(run_price, run_size)
 
             trim_size = x.quantity - run_size * jobs_required
-            trim_price = int(np.ceil(x.quantity_materials * trim_size * x.me))
+            trim_price = int(
+                np.ceil(x.quantity_materials * trim_size * x.me_impact)
+            )
             trim_price = np.maximum(trim_price, trim_size)
 
             run_price = (run_price * jobs_required) + trim_price
@@ -117,8 +121,8 @@ def append_prices(step):
 
 def ultimate_decompose(product, run_size):
     base_col_df = setup.collection.to_df(
-        setup.me_mods(),
-        setup.te_mods(),
+        setup.me_impact(),
+        setup.te_impact(),
     )
     collection = enrich_collection(base_col_df)
     types = norm_types()
@@ -140,7 +144,7 @@ def ultimate_decompose(product, run_size):
 
     while True:
         step = step.merge(collection, on="typeID", how="left").fillna(
-            value={"me": 1, "te": 1, "run": 2 ** 10}
+            value={"me": 0, "te": 0, "run": 2 ** 10}
         )
         # Add info to table to understand what we would need pn the next steps
 

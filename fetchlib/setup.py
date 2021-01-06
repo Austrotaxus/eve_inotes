@@ -22,7 +22,7 @@ class Setup:
     ):
         self.citadel_type = CitadelTypes.RAITARU
         self.space_type = SpaceTypes.NULL_WH
-        self.rig_set = [Rigs.ADV_ME_COMP_1]  # , Rigs.ADV_ME_SMALL_1]
+        self.rig_set = []
         self.skills = None
         self.collection = BlueprintCollection(self.initial_collection())
         self._non_productables = {
@@ -34,7 +34,7 @@ class Setup:
         }
 
     @classmethod
-    def default_efficiences(cls):
+    def default_impact(cls):
         members = ProductionClasses.to_dict().values()
         res = {m: 1.0 for m in members}
         return res
@@ -43,28 +43,28 @@ class Setup:
         d = importer.component_by_classes
         for tp, lst in d.items():
             for name in lst:
-                yield BP(name, 0.9, 0.8, p_type=tp)
+                yield BP(name, 0.1, 0.2, p_type=tp)
 
     def non_productables(self):
         return self._non_productables
 
-    def me_mods(self):
+    def me_impact(self):
         citadel_impact = 1 - (
             (self.citadel_type in (CitadelTypes.RAITARU,)) * 0.01
         )
 
-        resulting_dict = Setup.default_efficiences()
+        impact_dict = Setup.default_impact()
 
         for rig in self.rig_set:
-            rig_impact = rig.represent_me(self.space_type)
-            for affected, percent in rig_impact.items():
-                resulting_dict[affected] = percent
+            rig_dict = rig.represent_me(self.space_type)
+            for affected, rig_me in rig_dict.items():
+                impact_dict[affected] = 1.0 - rig_me
 
-        for key in resulting_dict.keys():
-            resulting_dict[key] *= citadel_impact
-        return resulting_dict
+        for key in impact_dict.keys():
+            impact_dict[key] *= citadel_impact
+        return impact_dict
 
-    def te_mods(self):
+    def te_impact(self):
         return {}
 
     def add_to_collection(self, prints: Iterable[BP]):
