@@ -1,8 +1,9 @@
+import requests
+from pathlib import Path
+
 import bz2
 import sqlite3
 import pandas as pd
-import requests
-from pathlib import Path
 
 from fetchlib.utils import CLASSES_GROUPS
 

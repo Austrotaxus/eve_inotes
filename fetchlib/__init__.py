@@ -117,8 +117,8 @@ def append_prices(step):
 
 def ultimate_decompose(product, run_size):
     base_col_df = setup.collection.to_df(
-        setup.me_mods(),
-        setup.te_mods(),
+        setup.me_impact(),
+        setup.te_impact(),
     )
     collection = enrich_collection(base_col_df)
     types = norm_types()
@@ -140,7 +140,7 @@ def ultimate_decompose(product, run_size):
 
     while True:
         step = step.merge(collection, on="typeID", how="left").fillna(
-            value={"me": 1, "te": 1, "run": 2 ** 10}
+            value={"me": 0, "te": 0, "run": 2 ** 10}
         )
         # Add info to table to understand what we would need pn the next steps
 

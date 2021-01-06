@@ -83,17 +83,17 @@ class BlueprintCollection:
             self.prints[p.name] = p
 
     # return dataframe with respects to efficiency
-    def to_df(self, me_mods={}, te_mods={}):
+    def to_df(self, me_impact={}, te_impact={}):
         lst = self.prints.values()
         names = (p.name for p in lst)
-        mes = (p.me * me_mods.get(p.p_type, 1.0) for p in lst)
-        tes = (p.te * te_mods.get(p.p_type, 1.0) for p in lst)
+        m_effs = ((1 - p.me) * me_impact.get(p.p_type, 1.0) for p in lst)
+        t_effs = ((1 - p.te) * te_impact.get(p.p_type, 1.0) for p in lst)
         runs = (p.runs for p in lst)
         return pd.DataFrame(
             data={
                 "productName": [*names],
-                "me": [*mes],
-                "te": [*tes],
+                "me": [*m_effs],
+                "te": [*t_effs],
                 "run": [*runs],
             }
         )
@@ -176,9 +176,9 @@ class Rig:
 
 
 default_t1 = {
-    SpaceTypes.HIGHSEC: 1.0 - 0.02,
-    SpaceTypes.LOWSEC: 1.0 - 0.02 * 1.9,
-    SpaceTypes.NULL_WH: 1.0 - 0.02 * 2.1,
+    SpaceTypes.HIGHSEC: 0.02,
+    SpaceTypes.LOWSEC: 0.02 * 1.9,
+    SpaceTypes.NULL_WH: 0.02 * 2.1,
 }
 
 default_t2 = {}
