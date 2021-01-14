@@ -1,7 +1,15 @@
 import json
+import os
+from pathlib import Path
 from typing import Iterable
 
 import pandas as pd
+
+PATH = (
+    Path(os.path.expanduser("~")) / ".eve_db"
+    if os.name != "nt"
+    else Path("C:\\Programm Files")
+)
 
 
 class BaseCollection:

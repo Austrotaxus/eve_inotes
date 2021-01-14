@@ -11,6 +11,7 @@ from fetchlib.utils import (
     SpaceTypes,
     CitadelTypes,
     Rigs,
+    PATH,
 )
 
 importer = Importer()
@@ -75,5 +76,5 @@ class Setup:
         self.collection.add(prints)
 
     def save_setup(self):
-        with open("fetchlib/setups/main_setup.pkl", "wb") as f:
+        with open(PATH / "main_setup.pkl", "wb") as f:
             pickle.dump(self, f)

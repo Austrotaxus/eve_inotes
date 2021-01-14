@@ -5,9 +5,8 @@ import bz2
 import sqlite3
 import pandas as pd
 
-from fetchlib.utils import CLASSES_GROUPS
+from fetchlib.utils import CLASSES_GROUPS, PATH
 
-PATH = Path("./db/")
 DB_NAME = "eve.db"
 OUTPUT_FILENAME = "eve.db.bz2file"
 URL = "https://www.fuzzwork.co.uk/dump/sqlite-latest.sqlite.bz2"
@@ -90,7 +89,7 @@ class Importer(metaclass=ImporterSingleton):
                     print(
                         "\rDownloading file ... [%s]             "
                         % (get_human_size(total_size)),
-                        end="",
+                        end="Path: {}".format(output),
                     )
                     handle.write(data)
                     total_size += len(data)
