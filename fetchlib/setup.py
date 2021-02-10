@@ -26,6 +26,8 @@ class Setup:
         self.rig_set = []
         self.skills = None
         self.collection = BlueprintCollection(self.initial_collection())
+        self.reaction_lines = 20
+        self.production_lines = 20
         self._non_productables = {
             "Nitrogen Fuel Block Blueprint",
             "Hydrogen Fuel Block Blueprint",

@@ -12,14 +12,37 @@ from fetchlib.utils import (
 )
 
 
+def set_lines_amount():
+    questions = [
+        {
+            "type": "input",
+            "name": "reac",
+            "message": "Reaction amount",
+        },
+        {
+            "type": "input",
+            "name": "prod",
+            "message": "Production Amount",
+        },
+    ]
+
+    answers = prompt(questions)
+    setup.reaction_lines = int(answers["reac"])
+    setup.reaction_lines = int(answers["prod"])
+    return "set_lines_amount"
+
+
 def show_setup():
     print("Rigs: ")
     for r in setup.rig_set:
         print(r)
-    print("Citadel: ")
-    print(setup.citadel_type)
-    print("Space: ")
-    print(setup.space_type)
+    print("Citadel: {}".format(setup.citadel_type))
+    print("Space: {}".format(setup.space_type))
+    print(
+        "Lines - reaction: {}, production: {}".format(
+            setup.reaction_lines, setup.production_lines
+        )
+    )
     return "Shown setup"
 
 
@@ -195,6 +218,7 @@ def activity_set():
         "Choose space type": set_space_type,
         "Choose citadel type": set_citadel_type,
         "Select rig set": select_rigs,
+        "Set lines amount": set_lines_amount,
         "Show setup": show_setup,
         "Show blueprint": show_collection_blueprint,
         "Set blueprint": set_blueprint,

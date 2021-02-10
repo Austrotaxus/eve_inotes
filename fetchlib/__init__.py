@@ -172,10 +172,11 @@ def ultimate_decompose(product, run_size):
         step = step[
             step["typeID"].isin(withdrawed_products()["productTypeID"])
         ]
-        steps.append(step)
 
         if step.shape[0] == 0:
             break
+
+        steps.append(step)
 
     materials = (
         atomic[["typeID", "quantity"]]
@@ -186,25 +187,29 @@ def ultimate_decompose(product, run_size):
     materials = materials.join(types.set_index("typeID"), lsuffix="-atom_")[
         ["typeName", "quantity"]
     ].astype({"quantity": "int32"})
-
+    for i in range(len(steps)):
+        steps[i] = append_products(steps[i])[
+            ["typeID", "quantity", "activityID"]
+        ]
+        # BPC id instead of material ID !!!
+        steps[i] = steps[i].reset_index()
+        steps[i]["typeID"] = steps[i]["index"]
+        steps[i] = steps[i].drop(columns=["index"])
     return reversed(steps), materials
 
 
 def create_production_schema(product, run_size):
     steps, materials = ultimate_decompose(product, run_size)
-    for step in steps:
-        if step.empty:
-            yield materials
+    combined = [materials] + [*steps]
+    for value in combined:
+        if "activityID" not in value.columns:
+            yield value
             continue
-        v = append_products(step).join(norm_types().set_index("typeID"))
+
+        v = append_products(value).join(norm_types().set_index("typeID"))
         v["runs_required"] = v["quantity"] / v["quantity_product"]
-        yield v[
-            [
-                "typeName",
-                "quantity",
-                "runs_required",
-            ]
-        ]
+
+        yield v[["typeName", "quantity", "runs_required", "activityID"]]
 
 
 def balance_runs(runs_required: Dict[str, float], lines: int):
@@ -241,6 +246,20 @@ def output_production_chema(product, run_size: int):
         output(table.to_csv(index=False, sep="\t"))
         if i > 0:
             output("Balancing runs:")
-            d = table.set_index("typeName").to_dict()["runs_required"]
-            for k, v in balance_runs(d, 20).items():
-                output((k, v))
+            prod = (
+                table[table["activityID"] == 1]
+                .set_index("typeName")
+                .to_dict()["runs_required"]
+            )
+            reac = (
+                table[table["activityID"] == 11]
+                .set_index("typeName")
+                .to_dict()["runs_required"]
+            )
+
+            if prod:
+                for k, v in balance_runs(prod, setup.reaction_lines).items():
+                    output((k, v))
+            if reac:
+                for k, v in balance_runs(reac, setup.production_lines).items():
+                    output((k, v))
