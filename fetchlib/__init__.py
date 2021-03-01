@@ -258,8 +258,8 @@ def output_production_chema(product, run_size: int):
             )
 
             if prod:
-                for k, v in balance_runs(prod, setup.reaction_lines).items():
+                for k, v in balance_runs(prod, setup.production_lines).items():
                     output((k, v))
             if reac:
-                for k, v in balance_runs(reac, setup.production_lines).items():
+                for k, v in balance_runs(reac, setup.reaction_lines).items():
                     output((k, v))

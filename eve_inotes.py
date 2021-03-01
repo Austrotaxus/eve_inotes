@@ -27,8 +27,8 @@ def set_lines_amount():
     ]
 
     answers = prompt(questions)
-    setup.reaction_lines = int(answers["reac"])
-    setup.reaction_lines = int(answers["prod"])
+    reac, produc = int(answers["reac"]), int(answers["prod"])
+    setup.set_lines_amount(reac, produc)
     return "set_lines_amount"
 
 

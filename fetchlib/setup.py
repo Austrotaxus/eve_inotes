@@ -80,3 +80,7 @@ class Setup:
     def save_setup(self):
         with open(PATH / "main_setup.pkl", "wb") as f:
             pickle.dump(self, f)
+
+    def set_lines_amount(self, reaction: int, production: int):
+        self.reaction_lines = reaction
+        self.production_lines = production
