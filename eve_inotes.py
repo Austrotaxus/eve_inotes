@@ -2,7 +2,7 @@ import os
 
 from PyInquirer import style_from_dict, prompt
 
-from fetchlib import setup, ultimate_decompose, output_production_chema
+from fetchlib import setup, ultimate_decompose, output_production_schema
 from fetchlib.utils import (
     SpaceTypes,
     CitadelTypes,
@@ -95,19 +95,6 @@ def select_rigs():
 
 
 def set_blueprint():
-    def is_float(arg):
-        try:
-            float(arg)
-        except Exception:
-            return False
-        return True
-
-    def is_int(arg):
-        try:
-            int(arg)
-        except Exception:
-            return False
-        return True
 
     questions = [
         {
@@ -186,10 +173,11 @@ def evaluate_production_schema():
             "type": "input",
             "name": "runs",
             "message": "How many runs?",
+            "validate": lambda x: is_int(x) and int(x) > 0,
         },
     ]
     answers = prompt(questions)
-    output_production_chema(answers["product"], int(answers["runs"]))
+    output_production_schema(answers["product"], int(answers["runs"]))
     return answers
 
 
@@ -244,6 +232,22 @@ def choose_activity_cycle():
         if not result:
             break
         input()
+
+
+def is_float(arg):
+    try:
+        float(arg)
+    except Exception:
+        return False
+    return True
+
+
+def is_int(arg):
+    try:
+        int(arg)
+    except Exception:
+        return False
+    return True
 
 
 if __name__ == "__main__":

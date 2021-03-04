@@ -240,8 +240,14 @@ def output(x):
     print()
 
 
-def output_production_chema(product, run_size: int):
-    for i, table in enumerate(create_production_schema(product, run_size)):
+def output_production_schema(product, run_size: int):
+    prod = product.title()
+    try:
+        sequence = [*enumerate(create_production_schema(prod, run_size))]
+    except (AssertionError, ValueError) as e:
+        print(e)
+        return
+    for i, table in sequence:
         output("Step {} is: ".format(i))
         output(table.to_csv(index=False, sep="\t"))
         if i > 0:
