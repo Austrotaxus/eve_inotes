@@ -177,7 +177,11 @@ def evaluate_production_schema():
         },
     ]
     answers = prompt(questions)
-    output_production_schema(answers["product"], int(answers["runs"]))
+    strings = output_production_schema(
+        answers["product"], int(answers["runs"])
+    )
+    for s in strings:
+        print(s)
     return answers
 
 

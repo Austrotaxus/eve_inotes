@@ -1,7 +1,7 @@
 import operator
 import os
 import pickle
-from typing import Dict
+from typing import Dict, List
 from math import floor, ceil
 
 import sqlite3
@@ -234,24 +234,19 @@ def balance_runs(runs_required: Dict[str, float], lines: int):
     return lines_load
 
 
-def output(x):
-    print()
-    print(x)
-    print()
-
-
-def output_production_schema(product, run_size: int):
+def output_production_schema(product, run_size: int) -> List[str]:
+    result = []
     prod = product.title()
     try:
         sequence = [*enumerate(create_production_schema(prod, run_size))]
     except (AssertionError, ValueError) as e:
-        print(e)
-        return
+        result.append(e)
+        return result
     for i, table in sequence:
-        output("Step {} is: ".format(i))
-        output(table.to_csv(index=False, sep="\t"))
+        result.append("Step {} is: ".format(i))
+        result.append(table.to_csv(index=False, sep="\t"))
         if i > 0:
-            output("Balancing runs:")
+            result.append("Balancing runs:")
             prod = (
                 table[table["activityID"] == 1]
                 .set_index("typeName")
@@ -265,7 +260,9 @@ def output_production_schema(product, run_size: int):
 
             if prod:
                 for k, v in balance_runs(prod, setup.production_lines).items():
-                    output((k, v))
+                    result.append((k, v))
             if reac:
                 for k, v in balance_runs(reac, setup.reaction_lines).items():
-                    output((k, v))
+                    result.append((k, v))
+
+    return result
