@@ -121,63 +121,40 @@ def append_prices(step):
     )
 
 
-def ultimate_decompose(product, run_size):
+def full_expand(step, atomic):
+    """Expands next step from prev step"""
+
     base_col_df = setup.collection.to_df(
         setup.me_impact(),
         setup.te_impact(),
     )
     collection = enrich_collection(base_col_df)
+    step = step.merge(collection, on="typeID", how="left").fillna(
+        value={"me_impact": 1.0, "te_impact": 1.0, "run": 2 ** 10}
+    )
+    # Add info to table to understand what we would need pn the next steps
+
+    with_products = append_products(step)
+    with_materials = append_materials(with_products)
+    with_prices = append_prices(with_materials)
+    step = with_prices
+    step["quantity"], step["runs_required"] = count_required(step)
+    step = step.groupby(step.index).sum()
+    step = (
+        step[["quantity"]]
+        .reset_index()
+        .rename({"index": "typeID"}, axis="columns")
+    )
+    atomic = atomic.append(
+        step[~step["typeID"].isin(withdrawed_products()["productTypeID"])]
+    )
+    step = step[step["typeID"].isin(withdrawed_products()["productTypeID"])]
+
+    return atomic, step
+
+
+def materials_from_atomic(atomic):
     types = norm_types()
-
-    if product not in types["typeName"].values:
-        raise ValueError("No such product in database!")
-
-    # Init table is about root of our production
-    init_table = types[types["typeName"] == product]
-    init_table = init_table[["typeID"]]
-    init_table["quantity"] = run_size
-
-    atomic = pd.DataFrame(
-        [], columns=["typeID", "quantity", "basePrice"]
-    ).set_index("typeID")
-
-    step = init_table
-    steps = [step]
-
-    while True:
-        step = step.merge(collection, on="typeID", how="left").fillna(
-            value={"me_impact": 1.0, "te_impact": 1.0, "run": 2 ** 10}
-        )
-        # Add info to table to understand what we would need pn the next steps
-
-        with_products = append_products(step)
-        with_materials = append_materials(with_products)
-        with_prices = append_prices(with_materials)
-
-        step = with_prices
-        step["quantity"], step["runs_required"] = count_required(step)
-        step = step.groupby(step.index).sum()
-
-        step = (
-            step[["quantity"]]
-            .reset_index()
-            .rename({"index": "typeID"}, axis="columns")
-        )
-
-        # Atomic is everything that couln't be produced and should be taken from environment
-        atomic = atomic.append(
-            step[~step["typeID"].isin(withdrawed_products()["productTypeID"])]
-        )
-
-        step = step[
-            step["typeID"].isin(withdrawed_products()["productTypeID"])
-        ]
-
-        if step.shape[0] == 0:
-            break
-
-        steps.append(step)
-
     materials = (
         atomic[["typeID", "quantity"]]
         .astype({"typeID": "int32"})
@@ -187,6 +164,32 @@ def ultimate_decompose(product, run_size):
     materials = materials.join(types.set_index("typeID"), lsuffix="-atom_")[
         ["typeName", "quantity"]
     ].astype({"quantity": "int32"})
+
+    return materials
+
+
+def ultimate_decompose(product, run_size):
+    types = norm_types()
+    if product not in types["typeName"].values:
+        raise ValueError("No such product in database!")
+    # Init table is about root of our production
+    init_table = types[types["typeName"] == product]
+    init_table = init_table[["typeID"]]
+    init_table["quantity"] = run_size
+    atomic = pd.DataFrame(
+        [], columns=["typeID", "quantity", "basePrice"]
+    ).set_index("typeID")
+    step = init_table
+    steps = [step]
+    while True:
+
+        atomic, step = full_expand(step, atomic)
+
+        if step.shape[0] == 0:
+            break
+
+        steps.append(step)
+    materials = materials_from_atomic(atomic)
     for i in range(len(steps)):
         steps[i] = append_products(steps[i])[
             ["typeID", "quantity", "activityID"]
@@ -205,10 +208,8 @@ def create_production_schema(product, run_size):
         if "activityID" not in value.columns:
             yield value
             continue
-
         v = append_products(value).join(norm_types().set_index("typeID"))
         v["runs_required"] = v["quantity"] / v["quantity_product"]
-
         yield v[["typeName", "quantity", "runs_required", "activityID"]]
 
 
