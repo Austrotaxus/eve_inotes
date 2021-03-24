@@ -1,7 +1,7 @@
 import operator
 import os
 import pickle
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from math import floor, ceil
 
 import sqlite3
@@ -168,21 +168,33 @@ def materials_from_atomic(atomic):
     return materials
 
 
-def ultimate_decompose(product, run_size):
-    types = norm_types()
-    if product not in types["typeName"].values:
+def prepare_init_table(amounts: List[Tuple[str, int]]):
+    init = pd.DataFrame(amounts, columns=["typeName", "quantity"])
+    init = init.set_index("typeName").join(norm_types().set_index("typeName"))
+    init = init[["typeID", "quantity"]]
+    if len(init.index) != len(amounts):
         raise ValueError("No such product in database!")
-    # Init table is about root of our production
-    init_table = types[types["typeName"] == product]
-    init_table = init_table[["typeID"]]
-    init_table["quantity"] = run_size
+    return init
+
+
+def ultimate_decompose(table):
+    def preatify_steps(steps):
+        for i in range(len(steps)):
+            steps[i] = append_products(steps[i])[
+                ["typeID", "quantity", "activityID"]
+            ]
+            # BPC id instead of material ID
+            steps[i] = steps[i].reset_index()
+            steps[i]["typeID"] = steps[i]["index"]
+            steps[i] = steps[i].drop(columns=["index"])
+        return reversed(steps)
+
     atomic = pd.DataFrame(
         [], columns=["typeID", "quantity", "basePrice"]
     ).set_index("typeID")
-    step = init_table
+    step = table
     steps = [step]
     while True:
-
         atomic, step = full_expand(step, atomic)
 
         if step.shape[0] == 0:
@@ -190,19 +202,13 @@ def ultimate_decompose(product, run_size):
 
         steps.append(step)
     materials = materials_from_atomic(atomic)
-    for i in range(len(steps)):
-        steps[i] = append_products(steps[i])[
-            ["typeID", "quantity", "activityID"]
-        ]
-        # BPC id instead of material ID !!!
-        steps[i] = steps[i].reset_index()
-        steps[i]["typeID"] = steps[i]["index"]
-        steps[i] = steps[i].drop(columns=["index"])
-    return reversed(steps), materials
+    preaty_steps = preatify_steps(steps)
+
+    return preaty_steps, materials
 
 
-def create_production_schema(product, run_size):
-    steps, materials = ultimate_decompose(product, run_size)
+def create_production_schema(table):
+    steps, materials = ultimate_decompose(table)
     combined = [materials] + [*steps]
     for value in combined:
         if "activityID" not in value.columns:
@@ -216,12 +222,14 @@ def create_production_schema(product, run_size):
 def balance_runs(runs_required: Dict[str, float], lines: int):
     lines_distribution = dict.fromkeys(runs_required.keys(), 1)
     load = {}
+
     for i in range(len(runs_required), lines):
         for k in runs_required.keys():
             load[k] = runs_required[k] / lines_distribution[k]
         max_loaded = max(load.items(), key=operator.itemgetter(1))[0]
         lines_distribution[max_loaded] += 1
     lines_load = {}
+
     for key, value in lines_distribution.items():
         lines_load[key] = [0] * value
         # Populate lines_load with basic values
@@ -235,11 +243,10 @@ def balance_runs(runs_required: Dict[str, float], lines: int):
     return lines_load
 
 
-def output_production_schema(product, run_size: int) -> List[str]:
+def output_production_schema(table) -> List[str]:
     result = []
-    prod = product.title()
     try:
-        sequence = [*enumerate(create_production_schema(prod, run_size))]
+        sequence = [*enumerate(create_production_schema(table))]
     except (AssertionError, ValueError) as e:
         result.append(e)
         return result

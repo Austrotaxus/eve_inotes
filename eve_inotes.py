@@ -2,7 +2,12 @@ import os
 
 from PyInquirer import style_from_dict, prompt
 
-from fetchlib import setup, ultimate_decompose, output_production_schema
+from fetchlib import (
+    setup,
+    ultimate_decompose,
+    output_production_schema,
+    prepare_init_table,
+)
 from fetchlib.utils import (
     SpaceTypes,
     CitadelTypes,
@@ -10,6 +15,31 @@ from fetchlib.utils import (
     BP,
     ProductionClasses,
 )
+
+
+def evaluate_production_for_list():
+    questions = [
+        {
+            "type": "editor",
+            "name": "eve_multibuy",
+            "message": "Please write what you would like to product",
+            "eargs": {"editor": "nano", "ext": ".eve_multibuy"},
+        }
+    ]
+
+    string = prompt(questions)["eve_multibuy"]
+    lines = string.split("\n")
+    pairs = []
+    for line in lines:
+        if line == "":
+            continue
+        *product, amount = line.split()
+        pairs.append((" ".join(product), int(amount)))
+    table = prepare_init_table(pairs)
+    schema = output_production_schema(table)
+    for s in schema:
+        print(s)
+    return string
 
 
 def set_lines_amount():
@@ -171,15 +201,16 @@ def evaluate_production_schema():
         },
         {
             "type": "input",
-            "name": "runs",
-            "message": "How many runs?",
+            "name": "amount",
+            "message": "How many?",
             "validate": lambda x: is_int(x) and int(x) > 0,
         },
     ]
     answers = prompt(questions)
-    strings = output_production_schema(
-        answers["product"], int(answers["runs"])
-    )
+
+    product, amount = answers["product"].title(), int(answers["amount"])
+    table = prepare_init_table([(product, amount)])
+    strings = output_production_schema(table)
     for s in strings:
         print(s)
     return answers
@@ -207,6 +238,7 @@ def activity_set():
     return {
         "Calculate materials": calculate_materials,
         "Evaluate production schema": evaluate_production_schema,
+        "Evaluate production for list": evaluate_production_for_list,
         "Choose space type": set_space_type,
         "Choose citadel type": set_citadel_type,
         "Select rig set": select_rigs,
