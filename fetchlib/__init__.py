@@ -57,23 +57,41 @@ def enrich_collection(col_df):
 
 def count_required(step):
     def price_in_materials(x):
-        run_size = np.minimum(x.quantity, x.run)
-        jobs_required = (np.floor(x.quantity / run_size)).astype("int32")
+        ideal_run_size = np.ceil(x.quantity / x.quantity_product)
+        single_line_run_size = int(np.minimum(ideal_run_size, x.run))
+        paralel_jobs_required = np.ceil(
+            (x.quantity / (single_line_run_size * x.quantity_product))
+        ).astype("int32")
         # For production
         if x.activityID == 1:
-            run_price = int(
-                np.ceil(x.quantity_materials * run_size * x.me_impact)
+            single_line_run_price = int(
+                np.ceil(
+                    x.quantity_materials * single_line_run_size * x.me_impact
+                )
             )
-            r_req = jobs_required * run_size
-            run_price = np.maximum(run_price, run_size)
+            single_line_run_price = np.maximum(
+                single_line_run_price, single_line_run_size
+            )
 
-            trim_size = x.quantity - run_size * jobs_required
+            trim_size = (
+                x.quantity
+                - single_line_run_size
+                * paralel_jobs_required
+                * x.quantity_product
+            )
             trim_price = int(
-                np.ceil(x.quantity_materials * trim_size * x.me_impact)
+                np.ceil(
+                    x.quantity_materials
+                    * trim_size
+                    * x.me_impact
+                    / x.quantity_product
+                )
             )
             trim_price = np.maximum(trim_price, trim_size)
 
-            run_price = (run_price * jobs_required) + trim_price
+            run_price = (
+                single_line_run_price * paralel_jobs_required
+            ) + trim_price
 
         # For reaction
         elif x.activityID == 11:
@@ -88,7 +106,7 @@ def count_required(step):
         jobs_required = (np.ceil(x.quantity / run_size)).astype("int32")
         # count for production
         if x.activityID == 1:
-            r_req = jobs_required * run_size
+            r_req = int(np.ceil(jobs_required * run_size / x.quantity_product))
         # count for reaction
         elif x.activityID == 11:
             r_req = int(np.ceil((x.quantity / x.quantity_product)))
@@ -157,13 +175,13 @@ def materials_from_atomic(atomic):
     types = norm_types()
     materials = (
         atomic[["typeID", "quantity"]]
-        .astype({"typeID": "int32"})
+        .astype({"typeID": "int64"})
         .groupby("typeID")
         .sum()
     )
     materials = materials.join(types.set_index("typeID"), lsuffix="-atom_")[
         ["typeName", "quantity"]
-    ].astype({"quantity": "int32"})
+    ].astype({"quantity": "int64"})
 
     return materials
 

@@ -34,6 +34,7 @@ class Setup:
             "Helium Fuel Block Blueprint",
             "Oxygen Fuel Block Blueprint",
             "R.A.M.- Starship Tech Blueprint",
+            "Scorpion Blueprint",
         }
 
     @classmethod

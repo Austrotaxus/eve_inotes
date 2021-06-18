@@ -62,6 +62,15 @@ def set_lines_amount():
     return "set_lines_amount"
 
 
+def add_non_productable():
+    question = [
+        {"type": "input", "name": "bpc", "message": "Non-productable BPC"}
+    ]
+    answers = prompt(question)
+    setup._non_productables.add(answers["bpc"])
+    return "Added non-productable"
+
+
 def show_setup():
     print("Rigs: ")
     for r in setup.rig_set:
@@ -188,10 +197,6 @@ def show_collection_blueprint():
     return (question, answer)
 
 
-def add_non_productables():
-    pass
-
-
 def evaluate_production_schema():
     questions = [
         {
@@ -236,16 +241,17 @@ def save_and_exit():
 
 def activity_set():
     return {
+        "Add non-productable": add_non_productable,
         "Calculate materials": calculate_materials,
-        "Evaluate production schema": evaluate_production_schema,
-        "Evaluate production for list": evaluate_production_for_list,
-        "Choose space type": set_space_type,
         "Choose citadel type": set_citadel_type,
+        "Choose space type": set_space_type,
+        "Evaluate production for list": evaluate_production_for_list,
+        "Evaluate production schema": evaluate_production_schema,
         "Select rig set": select_rigs,
-        "Set lines amount": set_lines_amount,
-        "Show setup": show_setup,
-        "Show blueprint": show_collection_blueprint,
         "Set blueprint": set_blueprint,
+        "Set lines amount": set_lines_amount,
+        "Show blueprint": show_collection_blueprint,
+        "Show setup": show_setup,
         "Save and exit": save_and_exit,
     }
 
