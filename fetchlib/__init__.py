@@ -249,15 +249,16 @@ def balance_runs(runs_required: Dict[str, float], lines: int):
     lines_load = {}
 
     for key, value in lines_distribution.items():
-        lines_load[key] = [0] * value
-        # Populate lines_load with basic values
-        for i in range(len(lines_load[key])):
-            lines_load[key][i] = floor(
-                float(runs_required[key]) / lines_distribution[key]
+        lines_load[key] = ""
+        int_runs_required = int(np.ceil(runs_required[key]))
+        div = int_runs_required // value
+        reminder = int_runs_required % value
+        line_load = "{} x {}".format(div, value - reminder)
+        if reminder > 0:
+            line_load = line_load + " + {} x {}, total - {}".format(
+                div + 1, reminder, value
             )
-        # Add insufficient runs to each line
-        for i in range(int(ceil(runs_required[key] - sum(lines_load[key])))):
-            lines_load[key][i] += 1
+        lines_load[key] = line_load
     return lines_load
 
 
@@ -286,9 +287,9 @@ def output_production_schema(table) -> List[str]:
 
             if prod:
                 for k, v in balance_runs(prod, setup.production_lines).items():
-                    result.append((k, v))
+                    result.append("{} : [{}]".format(k, v))
             if reac:
                 for k, v in balance_runs(reac, setup.reaction_lines).items():
-                    result.append((k, v))
+                    result.append("{} : [{}]".format(k, v))
 
     return result
