@@ -24,15 +24,15 @@ except Exception as e:
 CACHED_TABLES = importer.tables
 
 
-def indexed_types():
+def indexed_types() -> pd.DataFrame:
     return CACHED_TABLES["types"].set_index("typeID")
 
 
-def norm_types():
+def norm_types() -> pd.DataFrame:
     return CACHED_TABLES["types"]
 
 
-def withdrawed_products():
+def withdrawed_products() -> pd.DataFrame:
     res = CACHED_TABLES["products"]
     types = norm_types()
     res = res[res["activityID"].isin((1, 11))]
@@ -41,21 +41,21 @@ def withdrawed_products():
     return res
 
 
-def alterated_materials():
+def alterated_materials() -> pd.DataFrame:
     # Remove everything but 'reaction' and 'production'
     materials = CACHED_TABLES["materials"]
     res = materials[materials["activityID"].isin([1, 11])]
     return res.set_index("typeID")
 
 
-def enrich_collection(col_df):
+def enrich_collection(col_df: pd.DataFrame) -> pd.DataFrame:
     collection_df = col_df.merge(
         norm_types(), left_on="productName", right_on="typeName"
     )[["typeName", "typeID", "run", "me_impact", "te_impact"]]
     return collection_df
 
 
-def count_required(step):
+def count_required(step: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     def price_in_materials(x):
         ideal_run_size = np.ceil(x.quantity / x.quantity_product)
         single_line_run_size = int(np.minimum(ideal_run_size, x.run))
@@ -119,7 +119,7 @@ def count_required(step):
     return run_price, runs_required
 
 
-def append_products(step):
+def append_products(step: pd.DataFrame) -> pd.DataFrame:
     return step.set_index("typeID").join(
         withdrawed_products().set_index("productTypeID"),
         rsuffix="_product",
@@ -127,20 +127,24 @@ def append_products(step):
     )
 
 
-def append_materials(step):
+def append_materials(step: pd.DataFrame) -> pd.DataFrame:
     return step.set_index("typeID").join(
         alterated_materials(), how="inner", rsuffix="_materials"
     )
 
 
-def append_prices(step):
+def append_prices(step: pd.DataFrame) -> pd.DataFrame:
     return step.set_index("materialTypeID").join(
         indexed_types(), how="inner", rsuffix="_prices"
     )
 
 
-def full_expand(step, atomic):
-    """Expands next step from prev step"""
+def full_expand(
+    atomic: pd.DataFrame, step: pd.DataFrame
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Method to calculate next step,atomic based on previous step,atomic
+    """
 
     base_col_df = setup.collection.to_df(
         setup.me_impact(),
@@ -171,7 +175,10 @@ def full_expand(step, atomic):
     return atomic, step
 
 
-def materials_from_atomic(atomic):
+def materials_from_atomic(atomic: pd.DataFrame) -> pd.DataFrame:
+    """
+    Method for creating table with quantities and names from id table
+    """
     types = norm_types()
     materials = (
         atomic[["typeID", "quantity"]]
@@ -186,7 +193,10 @@ def materials_from_atomic(atomic):
     return materials
 
 
-def prepare_init_table(amounts: List[Tuple[str, int]]):
+def prepare_init_table(amounts: List[Tuple[str, int]]) -> pd.DataFrame:
+    """
+    Method to create initial Pandas dataframe
+    """
     init = pd.DataFrame(amounts, columns=["typeName", "quantity"])
     init = init.set_index("typeName").join(norm_types().set_index("typeName"))
     init = init[["typeID", "quantity"]]
@@ -195,8 +205,10 @@ def prepare_init_table(amounts: List[Tuple[str, int]]):
     return init
 
 
-def ultimate_decompose(table):
-    def preatify_steps(steps):
+def ultimate_decompose(
+    table: pd.DataFrame,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def prettify_steps(steps):
         for i in range(len(steps)):
             steps[i] = append_products(steps[i])[
                 ["typeID", "quantity", "activityID"]
@@ -213,19 +225,21 @@ def ultimate_decompose(table):
     step = table
     steps = [step]
     while True:
-        atomic, step = full_expand(step, atomic)
-
+        atomic, step = full_expand(atomic, step)
         if step.shape[0] == 0:
             break
-
         steps.append(step)
+
     materials = materials_from_atomic(atomic)
-    preaty_steps = preatify_steps(steps)
+    pretty_steps = prettify_steps(steps)
 
-    return preaty_steps, materials
+    return pretty_steps, materials
 
 
-def create_production_schema(table):
+def create_production_schema(table: pd.DataFrame):
+    """
+    Generator which yields steps one by one
+    """
     steps, materials = ultimate_decompose(table)
     combined = [materials] + [*steps]
     for value in combined:
@@ -238,6 +252,8 @@ def create_production_schema(table):
 
 
 def balance_runs(runs_required: Dict[str, float], lines: int):
+    """Method to calculate lines loading according to lines amount"""
+    # FIXME Job running time is not counted right now
     lines_distribution = dict.fromkeys(runs_required.keys(), 1)
     load = {}
 
@@ -262,7 +278,10 @@ def balance_runs(runs_required: Dict[str, float], lines: int):
     return lines_load
 
 
-def output_production_schema(table) -> List[str]:
+def production_schema(table: pd.DataFrame) -> List[str]:
+    """
+    Method to represent the whole prod schema as list of steps
+    """
     result = []
     try:
         sequence = [*enumerate(create_production_schema(table))]
