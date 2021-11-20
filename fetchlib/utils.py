@@ -24,20 +24,20 @@ class BaseCollection:
 
 
 class ProductionClasses(BaseCollection):
-    ADVANCED_COMPONENT = "advanced_component"
-    BASIC_CAPITAL_COMPONENT = "basic_capital_component"
     ADVANCED_CAPITAL_COMPONENT = "advanced_capital_component"
-    STRUCTURE_COMPONENT = "structure_component"
     ADVANCED_CAPITAL_SHIP = "advanced_capital_ship"
-    BASIC_CAPITAL_SHIP = "basic_capital_ship"
+    ADVANCED_COMPONENT = "advanced_component"
     ADVANCED_LARGE_SHIP = "advanced_large_ship"
-    BASIC_LARGE_SHIP = "basic_large_ship"
     ADVANCED_MEDIUM_SHIP = "advanced_medium_ship"
-    BASIC_MEDIUM_SHIP = "basic_medium_ship"
     ADVANCED_SMALL_SHIP = "advanced_small_ship"
-    BASIC_SMALL_SHIP = "basic_small_ship"
     AMMO = "ammo"
+    BASIC_CAPITAL_COMPONENT = "basic_capital_component"
+    BASIC_CAPITAL_SHIP = "basic_capital_ship"
+    BASIC_LARGE_SHIP = "basic_large_ship"
+    BASIC_MEDIUM_SHIP = "basic_medium_ship"
+    BASIC_SMALL_SHIP = "basic_small_ship"
     DRONE_OR_FIGHTER = "drone_or_fighter"
+    STRUCTURE_COMPONENT = "structure_component"
 
 
 class CitadelTypes(BaseCollection):
