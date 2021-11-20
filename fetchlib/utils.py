@@ -40,6 +40,12 @@ class ProductionClasses(BaseCollection):
     STRUCTURE_COMPONENT = "structure_component"
 
 
+class ReactionClasses(BaseCollection):
+    HYBRID_REACTION = "hybrid_reactions"
+    COMPOSITE_REACTION = "composite_reactions"
+    BIOCHEMICAL_REACTION = "biochemical_reactions"
+
+
 class CitadelTypes(BaseCollection):
     ASTRAHUS = "Astrahus"
     RAITARU = "Raitaru"
@@ -122,6 +128,11 @@ comp_gids = {
     "advanced_minmatar_capital": 1887,
     "fuel": 1870,
     "structure": 1865,
+    "advanced_composite_reaction": 499,
+    "processed_composite_reaction": 500,
+    "hybrid_reaction": 1860,
+    "booster_material": 1858,
+    "molecular_forged_material": 2767,
 }
 
 ship_gids = {}
@@ -152,6 +163,15 @@ CLASSES_GROUPS = {
         80,
         81,
     ],
+    ReactionClasses.BIOCHEMICAL_REACTION: [
+        comp_gids["booster_material"],
+        comp_gids["molecular_forged_material"],
+    ],
+    ReactionClasses.COMPOSITE_REACTION: [
+        comp_gids["processed_composite_reaction"],
+        comp_gids["advanced_composite_reaction"],
+    ],
+    ReactionClasses.HYBRID_REACTION: [comp_gids["hybrid_reaction"]],
 }
 
 
