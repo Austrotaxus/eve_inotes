@@ -8,7 +8,7 @@ import pandas as pd
 PATH = (
     Path(os.path.expanduser("~")) / ".eve_db"
     if os.name != "nt"
-    else Path("C:\\Programm Files")
+    else Path("C:\\Programm Files") / "eve_db"
 )
 
 
