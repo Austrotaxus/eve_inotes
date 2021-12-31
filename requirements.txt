@@ -1,4 +1,4 @@
 requests
 pandas==1.0.5
-PyInquirer==1.0.2
-sqlite3
+PyInquirer==1.0.3
+pysqlite3
