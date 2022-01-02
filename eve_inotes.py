@@ -85,7 +85,7 @@ class InqController:
         )
         return "Shown setup"
 
-    def set_citadel_type():
+    def set_citadel_type(self):
         current = self.setup.citadel_type
         possible = CitadelTypes.to_dict().values()
         activity_prompt = {
