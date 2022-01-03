@@ -27,7 +27,7 @@ class InqController:
                 "type": "editor",
                 "name": "eve_multibuy",
                 "message": "Please write what you would like to product",
-                "eargs": {"editor": "nano", "ext": ".eve_multibuy"},
+                "eargs": {"ext": ".eve_multibuy"},
             }
         ]
 
