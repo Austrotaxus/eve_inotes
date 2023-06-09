@@ -312,3 +312,56 @@ def production_schema(table: pd.DataFrame) -> List[str]:
                     result.append("{} : [{}]".format(k, v))
 
     return result
+
+
+class Decomposition:
+    def __init__(self, *, atomic=None, step):
+        if atomic is None:
+            atomic = self.empty_atomic()
+
+        # Some dark magic from pandas and sde
+        self.atomic, self.step = full_expand(atomic=atomic, step=step)
+
+        if not self.is_final:
+            self.child = Decomposition(atomic=self.atomic, step=self.step)
+        else:
+            self.child = None
+
+    @property
+    def is_final(self):
+        return self.step.shape[0] == 0
+
+    def _required_materials(self):
+        if self.is_final:
+            return self.atomic
+        else:
+            return self.atomic.append(self.child._required_materials())
+
+    @property
+    def required_materials(self):
+        return materials_from_atomic(self._required_materials())
+
+    @property
+    def prety_step(self):
+        step = self.step.copy()
+        step = append_products(step)[["typeID", "quantity", "activityID"]]
+        # BPC id instead of material ID
+        step = step.reset_index()
+        step["typeID"] = step["index"]
+        step = step.drop(columns=["index"])
+        step = append_products(step).join(norm_types().set_index("typeID"))
+        step["runs_required"] = step["quantity"] / step["quantity_product"]
+        return step[["typeName", "quantity", "runs_required", "activityID"]]
+
+    @property
+    def prety_steps(self) -> List[pd.DataFrame]:
+        if not self.is_final:
+            return self.child.prety_steps + [self.prety_step]
+        return []
+
+    @classmethod
+    def empty_atomic(cls):
+        dataframe = pd.DataFrame(
+            [], columns=["typeID", "quantity", "basePrice"]
+        ).set_index("typeID")
+        return dataframe
