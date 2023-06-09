@@ -205,52 +205,6 @@ def prepare_init_table(amounts: List[Tuple[str, int]]) -> pd.DataFrame:
     return init
 
 
-def ultimate_decompose(
-    table: pd.DataFrame,
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    def prettify_steps(steps):
-        for i in range(len(steps)):
-            steps[i] = append_products(steps[i])[
-                ["typeID", "quantity", "activityID"]
-            ]
-            # BPC id instead of material ID
-            steps[i] = steps[i].reset_index()
-            steps[i]["typeID"] = steps[i]["index"]
-            steps[i] = steps[i].drop(columns=["index"])
-        return reversed(steps)
-
-    atomic = pd.DataFrame(
-        [], columns=["typeID", "quantity", "basePrice"]
-    ).set_index("typeID")
-    step = table
-    steps = [step]
-    while True:
-        atomic, step = full_expand(atomic, step)
-        if step.shape[0] == 0:
-            break
-        steps.append(step)
-
-    materials = materials_from_atomic(atomic)
-    pretty_steps = prettify_steps(steps)
-
-    return pretty_steps, materials
-
-
-def create_production_schema(table: pd.DataFrame):
-    """
-    Generator which yields steps one by one
-    """
-    steps, materials = ultimate_decompose(table)
-    combined = [materials] + [*steps]
-    for value in combined:
-        if "activityID" not in value.columns:
-            yield value
-            continue
-        v = append_products(value).join(norm_types().set_index("typeID"))
-        v["runs_required"] = v["quantity"] / v["quantity_product"]
-        yield v[["typeName", "quantity", "runs_required", "activityID"]]
-
-
 def balance_runs(runs_required: Dict[str, float], lines: int):
     """Method to calculate lines loading according to lines amount"""
     # FIXME Job running time is not counted right now
@@ -283,12 +237,13 @@ def production_schema(table: pd.DataFrame) -> List[str]:
     Method to represent the whole prod schema as list of steps
     """
     result = []
+    d = Decomposition(step=table)
     try:
-        sequence = [*enumerate(create_production_schema(table))]
+        sequence = [d.required_materials] + d.prety_steps
     except (AssertionError, ValueError) as e:
         result.append(e)
         return result
-    for i, table in sequence:
+    for i, table in enumerate(sequence):
         result.append("Step {} is: ".format(i))
         result.append(table.to_csv(index=False, sep="\t"))
         if i > 0:
@@ -337,6 +292,12 @@ class Decomposition:
         else:
             return self.atomic.append(self.child._required_materials())
 
+    def __next__(self):
+        return self.child
+
+    def __iter__(self):
+        return self
+
     @property
     def required_materials(self):
         return materials_from_atomic(self._required_materials())
@@ -365,3 +326,33 @@ class Decomposition:
             [], columns=["typeID", "quantity", "basePrice"]
         ).set_index("typeID")
         return dataframe
+
+    def __repr__(self):
+        return f"Decomposition(steps: {self.step}, atomics: {self.atomic})"
+
+    def __str__(self):
+        result = ["Required materials:"]
+        result.append(self.required_materials.to_csv(index=False, sep="\t"))
+        for i, table in enumerate(self.prety_steps, start=1):
+            result.append("Step {} is: ".format(i))
+            result.append(table.to_csv(index=False, sep="\t"))
+            result.append("Balancing runs:")
+            prod = (
+                table[table["activityID"] == 1]
+                .set_index("typeName")
+                .to_dict()["runs_required"]
+            )
+            reac = (
+                table[table["activityID"] == 11]
+                .set_index("typeName")
+                .to_dict()["runs_required"]
+            )
+
+            if prod:
+                for k, v in balance_runs(prod, setup.production_lines).items():
+                    result.append(f"{k} : [{v}]")
+            if reac:
+                for k, v in balance_runs(reac, setup.reaction_lines).items():
+                    result.append(f"{k} : [{v}]")
+
+        return "\n".join(result)
