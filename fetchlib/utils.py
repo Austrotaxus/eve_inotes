@@ -96,19 +96,23 @@ class BlueprintCollection:
         for blueprints in prints:
             self.prints[blueprints.name] = blueprints
 
+    def add_blueptint(self, **kwargs):
+        self.prints[kwargs["name"]] = Blueprint(**kwargs)
+
     # return dataframe with respects to efficiency
-    def to_dataframe(self, me_impact={}, te_impact={}):
-        lst = self.prints.values()
-        names = (p.name for p in lst)
+    def to_dataframe(self, material_impact={}, time_impact={}):
+        blueprints = self.prints.values()
+        names = (p.name for p in blueprints)
         material_efficiencies = (
-            (1 - p.material_efficiency) * me_impact.get(p.product_type, 1.0)
-            for p in lst
+            (1 - p.material_efficiency)
+            * material_impact.get(p.product_type, 1.0)
+            for p in blueprints
         )
         time_efficiencies = (
-            (1 - p.time_efficiency) * te_impact.get(p.product_type, 1.0)
-            for p in lst
+            (1 - p.time_efficiency) * time_impact.get(p.product_type, 1.0)
+            for p in blueprints
         )
-        runs = (p.runs for p in lst)
+        runs = (p.runs for p in blueprints)
         return pd.DataFrame(
             data={
                 "productName": names,

@@ -78,6 +78,11 @@ class Setup:
             raise ValueError("Unknow typenames:{}".format(diff))
         self.collection.add(prints)
 
+    def add_blueprint_to_collection(self, name, **kwargs):
+        if not importer.tables["types"]["typeName"].str.contains(name).any():
+            raise ValueError(f"Unknown typename: {name}")
+        self.collection.add_blueptint(name=name, **kwargs)
+
     def save_setup(self):
         with open(PATH / "main_setup.pkl", "wb") as f:
             pickle.dump(self, f)

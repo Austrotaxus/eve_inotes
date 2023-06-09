@@ -171,14 +171,13 @@ class InqController:
             },
         ]
         answers = prompt(questions)
-        bp = Blueprint(
+        self.setup.add_blueprint_to_collection(
             name=answers["type_name"],
             material_efficiency=float(answers["me"]),
             time_efficiency=float(answers["te"]),
             runs=int(answers["runs"]),
             product_type=answers["p_type"],
         )
-        self.setup.add_to_collection([bp])
         return (questions, answers)
 
     def show_collection_blueprint(self):
