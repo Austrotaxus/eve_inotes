@@ -146,13 +146,13 @@ def full_expand(
     Method to calculate next step,atomic based on previous step,atomic
     """
 
-    base_col_df = setup.collection.to_df(
-        setup.me_impact(),
-        setup.te_impact(),
+    base_col_df = setup.collection.to_dataframe(
+        setup.material_efficiency_impact(),
+        setup.time_efficiency_impact(),
     )
     collection = enrich_collection(base_col_df)
     step = step.merge(collection, on="typeID", how="left").fillna(
-        value={"me_impact": 1.0, "te_impact": 1.0, "run": 2 ** 10}
+        value={"me_impact": 1.0, "te_impact": 1.0, "run": 2**10}
     )
     # Add info to table to understand what we would need pn the next steps
 

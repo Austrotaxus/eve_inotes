@@ -6,7 +6,7 @@ from pathlib import Path
 from fetchlib.importer import Importer
 from fetchlib.utils import (
     BlueprintCollection,
-    BP,
+    Blueprint,
     ProductionClasses,
     SpaceTypes,
     CitadelTypes,
@@ -47,12 +47,12 @@ class Setup:
         d = importer.component_by_classes
         for tp, lst in d.items():
             for name in lst:
-                yield BP(name, 0.1, 0.2, p_type=tp)
+                yield Blueprint(name, 0.1, 0.2, product_type=tp)
 
     def non_productables(self):
         return self._non_productables
 
-    def me_impact(self):
+    def material_efficiency_impact(self):
         citadel_impact = 1 - (
             (self.citadel_type in (CitadelTypes.RAITARU,)) * 0.01
         )
@@ -68,10 +68,10 @@ class Setup:
             impact_dict[key] *= citadel_impact
         return impact_dict
 
-    def te_impact(self):
+    def time_efficiency_impact(self):
         return {}
 
-    def add_to_collection(self, prints: Iterable[BP]):
+    def add_to_collection(self, prints: Iterable[Blueprint]):
         names = [p.name for p in prints]
         diff = set(names) - set(importer.tables["types"]["typeName"])
         if diff:

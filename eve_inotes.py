@@ -12,7 +12,7 @@ from fetchlib.utils import (
     SpaceTypes,
     CitadelTypes,
     Rigs,
-    BP,
+    Blueprint,
     ProductionClasses,
 )
 
@@ -171,12 +171,12 @@ class InqController:
             },
         ]
         answers = prompt(questions)
-        bp = BP(
+        bp = Blueprint(
             name=answers["type_name"],
-            me=float(answers["me"]),
-            te=float(answers["te"]),
+            material_efficiency=float(answers["me"]),
+            time_efficiency=float(answers["te"]),
             runs=int(answers["runs"]),
-            p_type=answers["p_type"],
+            product_type=answers["p_type"],
         )
         self.setup.add_to_collection([bp])
         return (questions, answers)
