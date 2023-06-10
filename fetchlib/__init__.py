@@ -132,9 +132,7 @@ def append_prices(step: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def full_expand(
-    atomic: pd.DataFrame, step: pd.DataFrame
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def full_expand(step: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Method to calculate next step,atomic based on previous step,atomic
     """
@@ -160,9 +158,8 @@ def full_expand(
         .reset_index()
         .rename({"index": "typeID"}, axis="columns")
     )
-    atomic = atomic.append(
-        step[~step["typeID"].isin(withdrawed_products()["productTypeID"])]
-    )
+    atomic = step[~step["typeID"].isin(withdrawed_products()["productTypeID"])]
+
     step = step[step["typeID"].isin(withdrawed_products()["productTypeID"])]
 
     return atomic, step
@@ -269,7 +266,7 @@ class Decomposition:
             atomic = self.empty_atomic()
 
         # Some dark magic from pandas and sde
-        self.atomic, self.step = full_expand(atomic=atomic, step=step)
+        self.atomic, self.step = full_expand(step=step)
 
         if not self.is_final:
             self.child = Decomposition(atomic=self.atomic, step=self.step)
