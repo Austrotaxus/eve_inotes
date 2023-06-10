@@ -1,20 +1,18 @@
 from typing import Iterable
 
 import pickle
-from pathlib import Path
 
-from fetchlib.importer import Importer
+from fetchlib.static_data_export import StaticDataExport
 from fetchlib.utils import (
     BlueprintCollection,
     Blueprint,
     ProductionClasses,
     SpaceTypes,
     CitadelTypes,
-    Rigs,
     PATH,
 )
 
-importer = Importer()
+sde = StaticDataExport()
 
 
 class Setup:
@@ -34,7 +32,6 @@ class Setup:
             "Helium Fuel Block Blueprint",
             "Oxygen Fuel Block Blueprint",
             "R.A.M.- Starship Tech Blueprint",
-            "Scorpion Blueprint",
         }
 
     @classmethod
@@ -44,7 +41,7 @@ class Setup:
         return res
 
     def initial_collection(self):
-        d = importer.component_by_classes
+        d = sde.component_by_classes
         for tp, lst in d.items():
             for name in lst:
                 yield Blueprint(name, 0.1, 0.2, product_type=tp)
@@ -71,15 +68,15 @@ class Setup:
     def time_efficiency_impact(self):
         return {}
 
-    def add_to_collection(self, prints: Iterable[Blueprint]):
+    def add_blueprints_to_collection(self, prints: Iterable[Blueprint]):
         names = [p.name for p in prints]
-        diff = set(names) - set(importer.tables["types"]["typeName"])
+        diff = set(names) - set(sde.tables["types"]["typeName"])
         if diff:
             raise ValueError("Unknow typenames:{}".format(diff))
         self.collection.add(prints)
 
     def add_blueprint_to_collection(self, name, **kwargs):
-        if not importer.tables["types"]["typeName"].str.contains(name).any():
+        if not sde.tables["types"]["typeName"].str.contains(name).any():
             raise ValueError(f"Unknown typename: {name}")
         self.collection.add_blueptint(name=name, **kwargs)
 

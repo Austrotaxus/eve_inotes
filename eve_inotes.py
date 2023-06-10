@@ -4,7 +4,6 @@ from PyInquirer import style_from_dict, prompt
 
 from fetchlib import (
     setup,
-    ultimate_decompose,
     production_schema,
     prepare_init_table,
 )

@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 
 
-from .setup import Setup, importer
+from .setup import Setup, sde
 from .utils import PATH
 
 
@@ -21,7 +21,7 @@ except Exception as e:
     setup = Setup()
 
 
-CACHED_TABLES = importer.tables
+CACHED_TABLES = sde.tables
 
 
 def indexed_types() -> pd.DataFrame:
@@ -281,6 +281,19 @@ class Decomposition:
             self.child = Decomposition(atomic=self.atomic, step=self.step)
         else:
             self.child = None
+
+    def from_tuple(self, tuples: List[Tuple[str, int]]):
+        """
+        Method to create initial Pandas dataframe
+        """
+        init = pd.DataFrame(amounts, columns=["typeName", "quantity"])
+        init = init.set_index("typeName").join(
+            norm_types().set_index("typeName")
+        )
+        init = init[["typeID", "quantity"]]
+        if len(init.index) != len(amounts):
+            raise ValueError("No such product in database!")
+        return Decomposition(step=init)
 
     @property
     def is_final(self):
