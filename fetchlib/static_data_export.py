@@ -73,6 +73,12 @@ class StaticDataExport(metaclass=StaticDataExportSingleton):
             for key in CLASSES_GROUPS.keys()
         }
 
+    def cached_table(self, table_name, indx=None):
+        if indx is None:
+            return self.tables[table_name]
+        else:
+            return self.tables[table_name].set_index(indx)
+
     def __download_db(self):
         res = requests.get(URL, stream=True)
         PATH.mkdir(parents=True, exist_ok=True)

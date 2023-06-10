@@ -24,17 +24,9 @@ except Exception as e:
 CACHED_TABLES = sde.tables
 
 
-def indexed_types() -> pd.DataFrame:
-    return CACHED_TABLES["types"].set_index("typeID")
-
-
-def norm_types() -> pd.DataFrame:
-    return CACHED_TABLES["types"]
-
-
 def withdrawed_products() -> pd.DataFrame:
     res = CACHED_TABLES["products"]
-    types = norm_types()
+    types = sde.cached_table("types")
     res = res[res["activityID"].isin((1, 11))]
     removes = types[types["typeName"].isin(setup.non_productables())]["typeID"]
     res = res[~res["typeID"].isin(removes)]
@@ -50,7 +42,7 @@ def alterated_materials() -> pd.DataFrame:
 
 def enrich_collection(col_df: pd.DataFrame) -> pd.DataFrame:
     collection_df = col_df.merge(
-        norm_types(), left_on="productName", right_on="typeName"
+        sde.cached_table("types"), left_on="productName", right_on="typeName"
     )[["typeName", "typeID", "run", "me_impact", "te_impact"]]
     return collection_df
 
@@ -134,8 +126,9 @@ def append_materials(step: pd.DataFrame) -> pd.DataFrame:
 
 
 def append_prices(step: pd.DataFrame) -> pd.DataFrame:
+    types = sde.cached_table("types", indx="typeID")
     return step.set_index("materialTypeID").join(
-        indexed_types(), how="inner", rsuffix="_prices"
+        types, how="inner", rsuffix="_prices"
     )
 
 
@@ -179,7 +172,7 @@ def materials_from_atomic(atomic: pd.DataFrame) -> pd.DataFrame:
     """
     Method for creating table with quantities and names from id table
     """
-    types = norm_types()
+    types = sde.cached_table("types")
     materials = (
         atomic[["typeID", "quantity"]]
         .astype({"typeID": "int64"})
@@ -198,7 +191,8 @@ def prepare_init_table(amounts: List[Tuple[str, int]]) -> pd.DataFrame:
     Method to create initial Pandas dataframe
     """
     init = pd.DataFrame(amounts, columns=["typeName", "quantity"])
-    init = init.set_index("typeName").join(norm_types().set_index("typeName"))
+    types = sde.cached_table("types", indx="typeName")
+    init = init.set_index("typeName").join(types)
     init = init[["typeID", "quantity"]]
     if len(init.index) != len(amounts):
         raise ValueError("No such product in database!")
@@ -286,13 +280,15 @@ class Decomposition:
         """
         Method to create initial Pandas dataframe
         """
-        init = pd.DataFrame(amounts, columns=["typeName", "quantity"])
-        init = init.set_index("typeName").join(
-            norm_types().set_index("typeName")
-        )
+        init = pd.DataFrame(
+            amounts, columns=["typeName", "quantity"]
+        ).set_index("typeName")
+        types = sde.cached_table("types", indx="typeName")
+        init = init.join(types)
         init = init[["typeID", "quantity"]]
         if len(init.index) != len(amounts):
             raise ValueError("No such product in database!")
+
         return Decomposition(step=init)
 
     @property
@@ -323,7 +319,8 @@ class Decomposition:
         step = step.reset_index()
         step["typeID"] = step["index"]
         step = step.drop(columns=["index"])
-        step = append_products(step).join(norm_types().set_index("typeID"))
+        types = sde.cached_table("types", indx="typeID")
+        step = append_products(step).join(types)
         step["runs_required"] = step["quantity"] / step["quantity_product"]
         return step[["typeName", "quantity", "runs_required", "activityID"]]
 
