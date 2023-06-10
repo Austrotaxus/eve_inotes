@@ -1,0 +1,16 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+requests = "*"
+pandas = "==1.0.5"
+pyinquirer = "==1.0.3"
+pysqlite3 = "*"
+numpy = "==1.23"
+
+[dev-packages]
+
+[requires]
+python_version = "3.9"
