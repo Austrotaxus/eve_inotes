@@ -69,13 +69,13 @@ class Setup:
 
     def add_blueprints_to_collection(self, prints: Iterable[Blueprint]):
         names = [p.name for p in prints]
-        diff = set(names) - set(sde.tables["types"]["typeName"])
+        diff = set(names) - set(sde.types["typeName"])
         if diff:
             raise ValueError("Unknow typenames:{}".format(diff))
         self.collection.add(prints)
 
     def add_blueprint_to_collection(self, name, **kwargs):
-        if not sde.tables["types"]["typeName"].str.contains(name).any():
+        if not sde.types["typeName"].str.contains(name).any():
             raise ValueError(f"Unknown typename: {name}")
         self.collection.add_blueptint(name=name, **kwargs)
 

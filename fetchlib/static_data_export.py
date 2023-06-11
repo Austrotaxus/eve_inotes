@@ -1,30 +1,91 @@
-import requests
-from pathlib import Path
-
 import bz2
 import sqlite3
+from abc import ABC, abstractproperty
+from pathlib import Path
+
 import pandas as pd
+import requests
 
 from fetchlib.utils import CLASSES_GROUPS, PATH
+
 
 DB_NAME = "eve.db"
 OUTPUT_FILENAME = "eve.db.bz2file"
 URL = "https://www.fuzzwork.co.uk/dump/sqlite-latest.sqlite.bz2"
 
 
-class StaticDataExportSingleton(type):
-    _instance = None
+class AbstractDataExport(ABC):
+    @abstractproperty
+    def products(self):
+        raise NotImplementedError
 
-    def __call__(cls, *args, **kwargs):
-        if not cls._instance or not (PATH / DB_NAME).exists():
-            cls._instance = super(StaticDataExportSingleton, cls).__call__(
-                *args, **kwargs
-            )
-        return cls._instance
+    @abstractproperty
+    def materials(self):
+        raise NotImplementedError
+
+    @abstractproperty
+    def types(self):
+        raise NotImplementedError
+
+    @abstractproperty
+    def activities(self):
+        raise NotImplementedError
+
+    @abstractproperty
+    def market_gropups(self):
+        raise NotImplementedError
+
+    def enrich_collection(self, collection: pd.DataFrame) -> pd.DataFrame:
+        result = collection.merge(
+            self.types,
+            left_on="productName",
+            right_on="typeName",
+        )[["typeName", "typeID", "run", "me_impact", "te_impact"]]
+        return result
+
+    def append_products(self, step: pd.DataFrame) -> pd.DataFrame:
+        result = step.set_index("typeID").join(
+            self.productables.set_index("productTypeID"),
+            rsuffix="_product",
+            how="inner",
+        )
+        return result
+
+    @property
+    def alterated_materials(self) -> pd.DataFrame:
+        # Remove everything but 'reaction' and 'production'
+        materials = self.materials
+        result = materials[materials["activityID"].isin([1, 11])]
+        return result.set_index("typeID")
+
+    @property
+    def productables(self) -> pd.DataFrame:
+        products = self.products
+        # Keep only reaction and production
+        products = products[products["activityID"].isin((1, 11))]
+        return products
+
+    def append_materials(self, step: pd.DataFrame) -> pd.DataFrame:
+        result = step.set_index("typeID").join(
+            self.alterated_materials, how="inner", rsuffix="_materials"
+        )
+        return result
+
+    def append_prices(self, step: pd.DataFrame) -> pd.DataFrame:
+        types = self.types.set_index("typeID")
+        result = step.set_index("materialTypeID").join(
+            types, how="inner", rsuffix="_prices"
+        )
+        return result
+
+    def append_everything(self, step: pd.DataFrame) -> pd.DataFrame:
+        with_products = self.append_products(step)
+        with_materials = self.append_materials(with_products)
+        with_prices = self.append_prices(with_materials)
+        return with_prices
 
 
-class StaticDataExport(metaclass=StaticDataExportSingleton):
-    # Singleton class
+class StaticDataExport(AbstractDataExport):
     def __init__(self):
         self.db = PATH / DB_NAME
         if not (PATH / DB_NAME).exists():
@@ -56,14 +117,12 @@ class StaticDataExport(metaclass=StaticDataExportSingleton):
         marketgroups_q = """select * from invMarketGroups"""
 
         # Remove 'test reaction' from tables
-        activity = pd.read_sql_query(activities_q, self.conn)
-        activity = activity[activity["typeID"] != 45732]
+        activities = pd.read_sql_query(activities_q, self.conn)
         products = pd.read_sql_query(products_q, self.conn)
-        products = products[products["typeID"] != 45732]
 
-        self.tables = {
+        self._tables = {
             "types": pd.read_sql_query(types_q, self.conn),
-            "activity": activity,
+            "activities": activities,
             "products": products,
             "materials": pd.read_sql_query(materials_q, self.conn),
             "marketgroups": pd.read_sql_query(marketgroups_q, self.conn),
@@ -72,12 +131,6 @@ class StaticDataExport(metaclass=StaticDataExportSingleton):
             key: self.__get_class_contents(key)
             for key in CLASSES_GROUPS.keys()
         }
-
-    def cached_table(self, table_name, indx=None):
-        if indx is None:
-            return self.tables[table_name]
-        else:
-            return self.tables[table_name].set_index(indx)
 
     def __download_db(self):
         res = requests.get(URL, stream=True)
@@ -124,55 +177,38 @@ class StaticDataExport(metaclass=StaticDataExportSingleton):
             )
         )
 
-    # Table methods
     @property
-    def productables(self) -> pd.DataFrame:
-        products = self.cached_table("products")
-        # Keep reaction and production
-        products = products[products["activityID"].isin((1, 11))]
-        return products
+    def activities(self):
+        table = self._tables["activities"]
+
+        # SDE contains 'testing' reaction with id = 45732
+        # This one not represented in-game and breaks decomposition algo
+
+        table = table[table["typeID"] != 45732]
+
+        return table
 
     @property
-    def alterated_materials(self) -> pd.DataFrame:
-        # Remove everything but 'reaction' and 'production'
-        materials = self.cached_table("materials")
-        result = materials[materials["activityID"].isin([1, 11])]
-        return result.set_index("typeID")
+    def products(self):
+        table = self._tables["products"]
 
-    def enrich_collection(self, collection: pd.DataFrame) -> pd.DataFrame:
-        result = collection.merge(
-            self.cached_table("types"),
-            left_on="productName",
-            right_on="typeName",
-        )[["typeName", "typeID", "run", "me_impact", "te_impact"]]
-        return result
+        # SDE contains 'testing' reaction with id 45732
+        # This one not represented in-game and breaks decomposition algo
 
-    def append_products(self, step: pd.DataFrame) -> pd.DataFrame:
-        result = step.set_index("typeID").join(
-            self.productables.set_index("productTypeID"),
-            rsuffix="_product",
-            how="inner",
-        )
-        return result
+        table = table[table["typeID"] != 45732]
+        return table
 
-    def append_materials(self, step: pd.DataFrame) -> pd.DataFrame:
-        result = step.set_index("typeID").join(
-            self.alterated_materials, how="inner", rsuffix="_materials"
-        )
-        return result
+    @property
+    def types(self):
+        return self._tables["types"]
 
-    def append_prices(self, step: pd.DataFrame) -> pd.DataFrame:
-        types = self.cached_table("types", indx="typeID")
-        result = step.set_index("materialTypeID").join(
-            types, how="inner", rsuffix="_prices"
-        )
-        return result
+    @property
+    def materials(self):
+        return self._tables["materials"]
 
-    def append_everything(self, step: pd.DataFrame) -> pd.DataFrame:
-        with_products = self.append_products(step)
-        with_materials = self.append_materials(with_products)
-        with_prices = self.append_prices(with_materials)
-        return with_prices
+    @property
+    def market_gropups(self):
+        return self._tables["marketgroups"]
 
 
 def get_human_size(size, precision=2):

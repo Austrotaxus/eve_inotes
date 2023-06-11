@@ -89,7 +89,7 @@ def full_expand(step: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Method to calculate next step,atomic based on previous step,atomic
     """
-    types = sde.cached_table("types")
+    types = sde.types
 
     base_col_df = setup.collection.to_dataframe(
         setup.material_efficiency_impact(),
@@ -129,7 +129,7 @@ def materials_from_atomic(atomic: pd.DataFrame) -> pd.DataFrame:
     """
     Method for creating table with quantities and names from id table
     """
-    types = sde.cached_table("types")
+    types = sde.types
     materials = (
         atomic[["typeID", "quantity"]]
         .astype({"typeID": "int64"})
@@ -197,7 +197,7 @@ class Decomposition:
         init = pd.DataFrame(
             tuples, columns=["typeName", "quantity"]
         ).set_index("typeName")
-        types = sde.cached_table("types", indx="typeName")
+        types = sde.types.set_index("typeName")
         init = init.join(types)
         init = init[["typeID", "quantity"]]
         if len(init.index) != len(tuples):
@@ -238,7 +238,7 @@ class Decomposition:
         step = step.reset_index()
         step["typeID"] = step["index"]
         step = step.drop(columns=["index"])
-        types = sde.cached_table("types", indx="typeID")
+        types = sde.types.set_index("typeID")
         step = sde.append_products(step).join(types)
         step["runs_required"] = step["quantity"] / step["quantity_product"]
         return step[["typeName", "quantity", "runs_required", "activityID"]]
