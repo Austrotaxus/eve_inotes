@@ -1,6 +1,6 @@
 import os
 
-from PyInquirer import style_from_dict, prompt
+from PyInquirer import prompt
 
 from fetchlib import (
     setup,
@@ -10,7 +10,6 @@ from fetchlib.utils import (
     SpaceTypes,
     CitadelTypes,
     Rigs,
-    Blueprint,
     ProductionClasses,
 )
 

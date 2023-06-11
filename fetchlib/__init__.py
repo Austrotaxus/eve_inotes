@@ -1,10 +1,7 @@
 import operator
-import os
 import pickle
 from typing import Dict, List, Tuple
-from math import floor, ceil
 
-import sqlite3
 import pandas as pd
 import numpy as np
 
@@ -264,7 +261,7 @@ class Decomposition:
     @classmethod
     def empty_atomic(cls):
         dataframe = pd.DataFrame(
-            [], columns=["typeID", "quantity", "basePrice"]
+            [], columns=["typeID", "quantity", "typeName"]
         )
         return dataframe
 
