@@ -2,10 +2,10 @@
 Some utilities to simplify 'eve-online' reaction-involoved and other complex production
 
 ## How to run:
-* Go to project dir
-* run 'pip install -r requirements.txt' in previously created env
-* run 'python eve_inotes.py'
-* you could import fetchlib in your project, or jupyter notebook
+* cd to project dir
+* `pipenv install`
+* `pipenv shell`
+* `python eve_inotes.py`
 
 ## TBD
 
