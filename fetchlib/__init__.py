@@ -143,19 +143,6 @@ def materials_from_atomic(atomic: pd.DataFrame) -> pd.DataFrame:
     return materials
 
 
-def prepare_init_table(amounts: List[Tuple[str, int]]) -> pd.DataFrame:
-    """
-    Method to create initial Pandas dataframe
-    """
-    init = pd.DataFrame(amounts, columns=["typeName", "quantity"])
-    types = sde.cached_table("types", indx="typeName")
-    init = init.set_index("typeName").join(types)
-    init = init[["typeID", "quantity"]]
-    if len(init.index) != len(amounts):
-        raise ValueError("No such product in database!")
-    return init
-
-
 def balance_runs(runs_required: Dict[str, float], lines: int):
     """Method to calculate lines loading according to lines amount"""
     # FIXME Job running time is not counted right now
@@ -183,43 +170,6 @@ def balance_runs(runs_required: Dict[str, float], lines: int):
     return lines_load
 
 
-def production_schema(table: pd.DataFrame) -> List[str]:
-    """
-    Method to represent the whole prod schema as list of steps
-    """
-    result = []
-    d = Decomposition(step=table)
-    try:
-        sequence = [d.required_materials] + d.prety_steps
-    except (AssertionError, ValueError) as e:
-        result.append(e)
-        return result
-    for i, table in enumerate(sequence):
-        result.append("Step {} is: ".format(i))
-        result.append(table.to_csv(index=False, sep="\t"))
-        if i > 0:
-            result.append("Balancing runs:")
-            prod = (
-                table[table["activityID"] == 1]
-                .set_index("typeName")
-                .to_dict()["runs_required"]
-            )
-            reac = (
-                table[table["activityID"] == 11]
-                .set_index("typeName")
-                .to_dict()["runs_required"]
-            )
-
-            if prod:
-                for k, v in balance_runs(prod, setup.production_lines).items():
-                    result.append("{} : [{}]".format(k, v))
-            if reac:
-                for k, v in balance_runs(reac, setup.reaction_lines).items():
-                    result.append("{} : [{}]".format(k, v))
-
-    return result
-
-
 class Decompositor:
     def __init__(self, sde=sde, setup=setup):
         self.sde = sde
@@ -238,17 +188,19 @@ class Decomposition:
         else:
             self.child = None
 
-    def from_tuple(self, tuples: List[Tuple[str, int]]):
+    @classmethod
+    def from_tuple(cls, tuples: List[Tuple[str, int]]):
         """
         Method to create initial Pandas dataframe
         """
+        # FIXME get rid of sde dependency
         init = pd.DataFrame(
-            amounts, columns=["typeName", "quantity"]
+            tuples, columns=["typeName", "quantity"]
         ).set_index("typeName")
         types = sde.cached_table("types", indx="typeName")
         init = init.join(types)
         init = init[["typeID", "quantity"]]
-        if len(init.index) != len(amounts):
+        if len(init.index) != len(tuples):
             raise ValueError("No such product in database!")
 
         return Decomposition(step=init)
@@ -263,11 +215,15 @@ class Decomposition:
         else:
             return self.atomic.append(self.child._required_materials())
 
-    def __next__(self):
-        return self.child
-
     def __iter__(self):
-        return self
+        def gen_helper():
+            init = self
+            while self.child:
+                yield init.step
+                init = self.child
+            yield init.step
+
+        return gen_helper()
 
     @property
     def required_materials(self):
@@ -304,6 +260,7 @@ class Decomposition:
         return f"Decomposition(steps: {self.step}, atomics: {self.atomic})"
 
     def __str__(self):
+        # FIXME get_rid of sde dependency
         result = ["Required materials:"]
         result.append(self.required_materials.to_csv(index=False, sep="\t"))
         for i, table in enumerate(self.prety_steps, start=1):

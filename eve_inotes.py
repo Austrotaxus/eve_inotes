@@ -4,8 +4,7 @@ from PyInquirer import style_from_dict, prompt
 
 from fetchlib import (
     setup,
-    production_schema,
-    prepare_init_table,
+    Decomposition,
 )
 from fetchlib.utils import (
     SpaceTypes,
@@ -38,10 +37,9 @@ class InqController:
                 continue
             *product, amount = line.split()
             pairs.append((" ".join(product), int(amount)))
-        table = prepare_init_table(pairs)
-        schema = production_schema(table)
-        for s in schema:
-            print(s)
+
+        decomposition = Decomposition.from_tuple(pairs)
+        print(str(decomposition))
         return string
 
     def set_lines_amount(self):
@@ -211,10 +209,9 @@ class InqController:
         answers = prompt(questions)
 
         product, amount = answers["product"].title(), int(answers["amount"])
-        table = prepare_init_table([(product, amount)])
-        strings = production_schema(table)
-        for s in strings:
-            print(s)
+        table = [(product, amount)]
+        decomposition = Decomposition.from_tuple(table)
+        print(str(decomposition))
         return answers
 
     def calculate_materials(self):
