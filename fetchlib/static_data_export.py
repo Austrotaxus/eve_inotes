@@ -124,6 +124,56 @@ class StaticDataExport(metaclass=StaticDataExportSingleton):
             )
         )
 
+    # Table methods
+    @property
+    def productables(self) -> pd.DataFrame:
+        products = self.cached_table("products")
+        # Keep reaction and production
+        products = products[products["activityID"].isin((1, 11))]
+        return products
+
+    @property
+    def alterated_materials(self) -> pd.DataFrame:
+        # Remove everything but 'reaction' and 'production'
+        materials = self.cached_table("materials")
+        result = materials[materials["activityID"].isin([1, 11])]
+        return result.set_index("typeID")
+
+    def enrich_collection(self, collection: pd.DataFrame) -> pd.DataFrame:
+        result = collection.merge(
+            self.cached_table("types"),
+            left_on="productName",
+            right_on="typeName",
+        )[["typeName", "typeID", "run", "me_impact", "te_impact"]]
+        return result
+
+    def append_products(self, step: pd.DataFrame) -> pd.DataFrame:
+        result = step.set_index("typeID").join(
+            self.productables.set_index("productTypeID"),
+            rsuffix="_product",
+            how="inner",
+        )
+        return result
+
+    def append_materials(self, step: pd.DataFrame) -> pd.DataFrame:
+        result = step.set_index("typeID").join(
+            self.alterated_materials, how="inner", rsuffix="_materials"
+        )
+        return result
+
+    def append_prices(self, step: pd.DataFrame) -> pd.DataFrame:
+        types = self.cached_table("types", indx="typeID")
+        result = step.set_index("materialTypeID").join(
+            types, how="inner", rsuffix="_prices"
+        )
+        return result
+
+    def append_everything(self, step: pd.DataFrame) -> pd.DataFrame:
+        with_products = self.append_products(step)
+        with_materials = self.append_materials(with_products)
+        with_prices = self.append_prices(with_materials)
+        return with_prices
+
 
 def get_human_size(size, precision=2):
     """Display size in human readable str"""

@@ -27,11 +27,10 @@ class Setup:
         self.reaction_lines = 20
         self.production_lines = 20
         self._non_productables = {
-            "Nitrogen Fuel Block Blueprint",
-            "Hydrogen Fuel Block Blueprint",
-            "Helium Fuel Block Blueprint",
-            "Oxygen Fuel Block Blueprint",
-            "R.A.M.- Starship Tech Blueprint",
+            "Nitrogen Fuel Block",
+            "Oxygen Fuel Block",
+            "Helium Fuel Block",
+            "Hydrogen Fuel Block",
         }
 
     @classmethod

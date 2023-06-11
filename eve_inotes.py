@@ -65,10 +65,14 @@ class InqController:
 
     def add_non_productable(self):
         question = [
-            {"type": "input", "name": "bpc", "message": "Non-productable BPC"}
+            {
+                "type": "input",
+                "name": "item",
+                "message": "Non-productable item",
+            }
         ]
         answers = prompt(question)
-        self.setup._non_productables.add(answers["bpc"])
+        self.setup._non_productables.add(answers["item"])
         return "Added non-productable"
 
     def show_setup(self):

@@ -21,32 +21,6 @@ except Exception as e:
     setup = Setup()
 
 
-CACHED_TABLES = sde.tables
-
-
-def withdrawed_products() -> pd.DataFrame:
-    res = CACHED_TABLES["products"]
-    types = sde.cached_table("types")
-    res = res[res["activityID"].isin((1, 11))]
-    removes = types[types["typeName"].isin(setup.non_productables())]["typeID"]
-    res = res[~res["typeID"].isin(removes)]
-    return res
-
-
-def alterated_materials() -> pd.DataFrame:
-    # Remove everything but 'reaction' and 'production'
-    materials = CACHED_TABLES["materials"]
-    res = materials[materials["activityID"].isin([1, 11])]
-    return res.set_index("typeID")
-
-
-def enrich_collection(col_df: pd.DataFrame) -> pd.DataFrame:
-    collection_df = col_df.merge(
-        sde.cached_table("types"), left_on="productName", right_on="typeName"
-    )[["typeName", "typeID", "run", "me_impact", "te_impact"]]
-    return collection_df
-
-
 def count_required(step: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     def price_in_materials(x):
         ideal_run_size = np.ceil(x.quantity / x.quantity_product)
@@ -111,46 +85,27 @@ def count_required(step: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     return run_price, runs_required
 
 
-def append_products(step: pd.DataFrame) -> pd.DataFrame:
-    return step.set_index("typeID").join(
-        withdrawed_products().set_index("productTypeID"),
-        rsuffix="_product",
-        how="inner",
-    )
-
-
-def append_materials(step: pd.DataFrame) -> pd.DataFrame:
-    return step.set_index("typeID").join(
-        alterated_materials(), how="inner", rsuffix="_materials"
-    )
-
-
-def append_prices(step: pd.DataFrame) -> pd.DataFrame:
-    types = sde.cached_table("types", indx="typeID")
-    return step.set_index("materialTypeID").join(
-        types, how="inner", rsuffix="_prices"
-    )
-
-
 def full_expand(step: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Method to calculate next step,atomic based on previous step,atomic
     """
+    types = sde.cached_table("types")
 
     base_col_df = setup.collection.to_dataframe(
         setup.material_efficiency_impact(),
         setup.time_efficiency_impact(),
     )
-    collection = enrich_collection(base_col_df)
+    collection = sde.enrich_collection(base_col_df)
     step = step.merge(collection, on="typeID", how="left").fillna(
         value={"me_impact": 1.0, "te_impact": 1.0, "run": 2**10}
     )
     # Add info to table to understand what we would need pn the next steps
 
-    with_products = append_products(step)
-    with_materials = append_materials(with_products)
-    with_prices = append_prices(with_materials)
-    step = with_prices
+    appended = sde.append_everything(step)
+
+    removes = types[types["typeName"].isin(setup.non_productables())]["typeID"]
+    step = appended[~appended.isin(removes)]
+
     step["quantity"], step["runs_required"] = count_required(step)
     step = step.groupby(step.index).sum()
     step = (
@@ -158,9 +113,14 @@ def full_expand(step: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         .reset_index()
         .rename({"index": "typeID"}, axis="columns")
     )
-    atomic = step[~step["typeID"].isin(withdrawed_products()["productTypeID"])]
-
-    step = step[step["typeID"].isin(withdrawed_products()["productTypeID"])]
+    atomic = step[
+        ~step["typeID"].isin(sde.productables["productTypeID"])
+        | step["typeID"].isin(removes)
+    ]
+    step = step[
+        step["typeID"].isin(sde.productables["productTypeID"])
+        & ~step["typeID"].isin(removes)
+    ]
 
     return atomic, step
 
@@ -260,16 +220,21 @@ def production_schema(table: pd.DataFrame) -> List[str]:
     return result
 
 
-class Decomposition:
-    def __init__(self, *, atomic=None, step):
-        if atomic is None:
-            atomic = self.empty_atomic()
+class Decompositor:
+    def __init__(self, sde=sde, setup=setup):
+        self.sde = sde
+        self.setup = setup
 
-        # Some dark magic from pandas and sde
-        self.atomic, self.step = full_expand(step=step)
+    def __apply__(self, step: pd.DataFrame):
+        pass
+
+
+class Decomposition:
+    def __init__(self, *, step, decompose_function=full_expand):
+        self.atomic, self.step = decompose_function(step=step)
 
         if not self.is_final:
-            self.child = Decomposition(atomic=self.atomic, step=self.step)
+            self.child = Decomposition(step=self.step)
         else:
             self.child = None
 
@@ -310,14 +275,15 @@ class Decomposition:
 
     @property
     def prety_step(self):
+        # FIXME get rid of sde dependency
         step = self.step.copy()
-        step = append_products(step)[["typeID", "quantity", "activityID"]]
+        step = sde.append_products(step)[["typeID", "quantity", "activityID"]]
         # BPC id instead of material ID
         step = step.reset_index()
         step["typeID"] = step["index"]
         step = step.drop(columns=["index"])
         types = sde.cached_table("types", indx="typeID")
-        step = append_products(step).join(types)
+        step = sde.append_products(step).join(types)
         step["runs_required"] = step["quantity"] / step["quantity_product"]
         return step[["typeName", "quantity", "runs_required", "activityID"]]
 
