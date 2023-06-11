@@ -58,57 +58,67 @@ class SpaceTypes(BaseCollection):
     NULL_WH = "null_wh"
 
 
-class BP:
+class Blueprint:
     def __init__(
         self,
         name,
-        me,
-        te,
-        p_type,
+        material_efficiency,
+        time_efficiency,
+        product_type,
         runs=None,
     ):
         self.name = name
-        self.me = me
-        self.te = te
-        self.runs = runs if runs else 2 ** 20
-        self.p_type = p_type
+        self.material_efficiency = material_efficiency
+        self.time_efficiency = time_efficiency
+        self.runs = runs if runs else 2**20
+        self.product_type = product_type
 
     def __repr__(self):
         return str(
             {
                 "name": self.name,
-                "me": self.me,
-                "te": self.te,
-                "p_type": self.p_type,
+                "me": self.material_efficiency,
+                "te": self.time_efficiency,
+                "p_type": self.product_type,
                 "runs": self.runs,
             }
         )
 
 
 class BlueprintCollection:
-    def __init__(self, prints: Iterable[BP]):
-        self.prints = {p.name: p for p in prints}
+    def __init__(self, prints: Iterable[Blueprint]):
+        self.prints = {blueprint.name: blueprint for blueprint in prints}
 
     def __repr__(self):
         return str(list(self.prints.values()))
 
-    def add(self, prints: Iterable[BP]):
-        for p in prints:
-            self.prints[p.name] = p
+    def add(self, prints: Iterable[Blueprint]):
+        for blueprints in prints:
+            self.prints[blueprints.name] = blueprints
+
+    def add_blueptint(self, **kwargs):
+        self.prints[kwargs["name"]] = Blueprint(**kwargs)
 
     # return dataframe with respects to efficiency
-    def to_df(self, me_impact={}, te_impact={}):
-        lst = self.prints.values()
-        names = (p.name for p in lst)
-        m_effs = ((1 - p.me) * me_impact.get(p.p_type, 1.0) for p in lst)
-        t_effs = ((1 - p.te) * te_impact.get(p.p_type, 1.0) for p in lst)
-        runs = (p.runs for p in lst)
+    def to_dataframe(self, material_impact={}, time_impact={}):
+        blueprints = self.prints.values()
+        names = (p.name for p in blueprints)
+        material_efficiencies = (
+            (1 - p.material_efficiency)
+            * material_impact.get(p.product_type, 1.0)
+            for p in blueprints
+        )
+        time_efficiencies = (
+            (1 - p.time_efficiency) * time_impact.get(p.product_type, 1.0)
+            for p in blueprints
+        )
+        runs = (p.runs for p in blueprints)
         return pd.DataFrame(
             data={
-                "productName": [*names],
-                "me_impact": [*m_effs],
-                "te_impact": [*t_effs],
-                "run": [*runs],
+                "productName": names,
+                "me_impact": material_efficiencies,
+                "te_impact": time_efficiencies,
+                "run": runs,
             }
         )
 

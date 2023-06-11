@@ -4,15 +4,13 @@ from PyInquirer import style_from_dict, prompt
 
 from fetchlib import (
     setup,
-    ultimate_decompose,
-    production_schema,
-    prepare_init_table,
+    Decomposition,
 )
 from fetchlib.utils import (
     SpaceTypes,
     CitadelTypes,
     Rigs,
-    BP,
+    Blueprint,
     ProductionClasses,
 )
 
@@ -39,10 +37,9 @@ class InqController:
                 continue
             *product, amount = line.split()
             pairs.append((" ".join(product), int(amount)))
-        table = prepare_init_table(pairs)
-        schema = production_schema(table)
-        for s in schema:
-            print(s)
+
+        decomposition = Decomposition.from_tuple(pairs)
+        print(str(decomposition))
         return string
 
     def set_lines_amount(self):
@@ -66,10 +63,14 @@ class InqController:
 
     def add_non_productable(self):
         question = [
-            {"type": "input", "name": "bpc", "message": "Non-productable BPC"}
+            {
+                "type": "input",
+                "name": "item",
+                "message": "Non-productable item",
+            }
         ]
         answers = prompt(question)
-        self.setup._non_productables.add(answers["bpc"])
+        self.setup._non_productables.add(answers["item"])
         return "Added non-productable"
 
     def show_setup(self):
@@ -171,14 +172,13 @@ class InqController:
             },
         ]
         answers = prompt(questions)
-        bp = BP(
+        self.setup.add_blueprint_to_collection(
             name=answers["type_name"],
-            me=float(answers["me"]),
-            te=float(answers["te"]),
+            material_efficiency=float(answers["me"]),
+            time_efficiency=float(answers["te"]),
             runs=int(answers["runs"]),
-            p_type=answers["p_type"],
+            product_type=answers["p_type"],
         )
-        self.setup.add_to_collection([bp])
         return (questions, answers)
 
     def show_collection_blueprint(self):
@@ -209,10 +209,9 @@ class InqController:
         answers = prompt(questions)
 
         product, amount = answers["product"].title(), int(answers["amount"])
-        table = prepare_init_table([(product, amount)])
-        strings = production_schema(table)
-        for s in strings:
-            print(s)
+        table = [(product, amount)]
+        decomposition = Decomposition.from_tuple(table)
+        print(str(decomposition))
         return answers
 
     def calculate_materials(self):

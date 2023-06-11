@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 
 
-from .setup import Setup, importer
+from .setup import Setup, sde
 from .utils import PATH
 
 
@@ -19,40 +19,6 @@ try:
 except Exception as e:
     print(e)
     setup = Setup()
-
-
-CACHED_TABLES = importer.tables
-
-
-def indexed_types() -> pd.DataFrame:
-    return CACHED_TABLES["types"].set_index("typeID")
-
-
-def norm_types() -> pd.DataFrame:
-    return CACHED_TABLES["types"]
-
-
-def withdrawed_products() -> pd.DataFrame:
-    res = CACHED_TABLES["products"]
-    types = norm_types()
-    res = res[res["activityID"].isin((1, 11))]
-    removes = types[types["typeName"].isin(setup.non_productables())]["typeID"]
-    res = res[~res["typeID"].isin(removes)]
-    return res
-
-
-def alterated_materials() -> pd.DataFrame:
-    # Remove everything but 'reaction' and 'production'
-    materials = CACHED_TABLES["materials"]
-    res = materials[materials["activityID"].isin([1, 11])]
-    return res.set_index("typeID")
-
-
-def enrich_collection(col_df: pd.DataFrame) -> pd.DataFrame:
-    collection_df = col_df.merge(
-        norm_types(), left_on="productName", right_on="typeName"
-    )[["typeName", "typeID", "run", "me_impact", "te_impact"]]
-    return collection_df
 
 
 def count_required(step: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -119,47 +85,27 @@ def count_required(step: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     return run_price, runs_required
 
 
-def append_products(step: pd.DataFrame) -> pd.DataFrame:
-    return step.set_index("typeID").join(
-        withdrawed_products().set_index("productTypeID"),
-        rsuffix="_product",
-        how="inner",
-    )
-
-
-def append_materials(step: pd.DataFrame) -> pd.DataFrame:
-    return step.set_index("typeID").join(
-        alterated_materials(), how="inner", rsuffix="_materials"
-    )
-
-
-def append_prices(step: pd.DataFrame) -> pd.DataFrame:
-    return step.set_index("materialTypeID").join(
-        indexed_types(), how="inner", rsuffix="_prices"
-    )
-
-
-def full_expand(
-    atomic: pd.DataFrame, step: pd.DataFrame
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def full_expand(step: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Method to calculate next step,atomic based on previous step,atomic
     """
+    types = sde.types
 
-    base_col_df = setup.collection.to_df(
-        setup.me_impact(),
-        setup.te_impact(),
+    base_col_df = setup.collection.to_dataframe(
+        setup.material_efficiency_impact(),
+        setup.time_efficiency_impact(),
     )
-    collection = enrich_collection(base_col_df)
+    collection = sde.enrich_collection(base_col_df)
     step = step.merge(collection, on="typeID", how="left").fillna(
-        value={"me_impact": 1.0, "te_impact": 1.0, "run": 2 ** 10}
+        value={"me_impact": 1.0, "te_impact": 1.0, "run": 2**10}
     )
     # Add info to table to understand what we would need pn the next steps
 
-    with_products = append_products(step)
-    with_materials = append_materials(with_products)
-    with_prices = append_prices(with_materials)
-    step = with_prices
+    appended = sde.append_everything(step)
+
+    removes = types[types["typeName"].isin(setup.non_productables())]["typeID"]
+    step = appended[~appended.isin(removes)]
+
     step["quantity"], step["runs_required"] = count_required(step)
     step = step.groupby(step.index).sum()
     step = (
@@ -167,10 +113,14 @@ def full_expand(
         .reset_index()
         .rename({"index": "typeID"}, axis="columns")
     )
-    atomic = atomic.append(
-        step[~step["typeID"].isin(withdrawed_products()["productTypeID"])]
-    )
-    step = step[step["typeID"].isin(withdrawed_products()["productTypeID"])]
+    atomic = step[
+        ~step["typeID"].isin(sde.productables["productTypeID"])
+        | step["typeID"].isin(removes)
+    ]
+    step = step[
+        step["typeID"].isin(sde.productables["productTypeID"])
+        & ~step["typeID"].isin(removes)
+    ]
 
     return atomic, step
 
@@ -179,7 +129,7 @@ def materials_from_atomic(atomic: pd.DataFrame) -> pd.DataFrame:
     """
     Method for creating table with quantities and names from id table
     """
-    types = norm_types()
+    types = sde.types
     materials = (
         atomic[["typeID", "quantity"]]
         .astype({"typeID": "int64"})
@@ -191,64 +141,6 @@ def materials_from_atomic(atomic: pd.DataFrame) -> pd.DataFrame:
     ].astype({"quantity": "int64"})
 
     return materials
-
-
-def prepare_init_table(amounts: List[Tuple[str, int]]) -> pd.DataFrame:
-    """
-    Method to create initial Pandas dataframe
-    """
-    init = pd.DataFrame(amounts, columns=["typeName", "quantity"])
-    init = init.set_index("typeName").join(norm_types().set_index("typeName"))
-    init = init[["typeID", "quantity"]]
-    if len(init.index) != len(amounts):
-        raise ValueError("No such product in database!")
-    return init
-
-
-def ultimate_decompose(
-    table: pd.DataFrame,
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    def prettify_steps(steps):
-        for i in range(len(steps)):
-            steps[i] = append_products(steps[i])[
-                ["typeID", "quantity", "activityID"]
-            ]
-            # BPC id instead of material ID
-            steps[i] = steps[i].reset_index()
-            steps[i]["typeID"] = steps[i]["index"]
-            steps[i] = steps[i].drop(columns=["index"])
-        return reversed(steps)
-
-    atomic = pd.DataFrame(
-        [], columns=["typeID", "quantity", "basePrice"]
-    ).set_index("typeID")
-    step = table
-    steps = [step]
-    while True:
-        atomic, step = full_expand(atomic, step)
-        if step.shape[0] == 0:
-            break
-        steps.append(step)
-
-    materials = materials_from_atomic(atomic)
-    pretty_steps = prettify_steps(steps)
-
-    return pretty_steps, materials
-
-
-def create_production_schema(table: pd.DataFrame):
-    """
-    Generator which yields steps one by one
-    """
-    steps, materials = ultimate_decompose(table)
-    combined = [materials] + [*steps]
-    for value in combined:
-        if "activityID" not in value.columns:
-            yield value
-            continue
-        v = append_products(value).join(norm_types().set_index("typeID"))
-        v["runs_required"] = v["quantity"] / v["quantity_product"]
-        yield v[["typeName", "quantity", "runs_required", "activityID"]]
 
 
 def balance_runs(runs_required: Dict[str, float], lines: int):
@@ -278,20 +170,102 @@ def balance_runs(runs_required: Dict[str, float], lines: int):
     return lines_load
 
 
-def production_schema(table: pd.DataFrame) -> List[str]:
-    """
-    Method to represent the whole prod schema as list of steps
-    """
-    result = []
-    try:
-        sequence = [*enumerate(create_production_schema(table))]
-    except (AssertionError, ValueError) as e:
-        result.append(e)
-        return result
-    for i, table in sequence:
-        result.append("Step {} is: ".format(i))
-        result.append(table.to_csv(index=False, sep="\t"))
-        if i > 0:
+class Decompositor:
+    def __init__(self, sde=sde, setup=setup):
+        self.sde = sde
+        self.setup = setup
+
+    def __apply__(self, step: pd.DataFrame):
+        pass
+
+
+class Decomposition:
+    def __init__(self, *, step, decompose_function=full_expand):
+        self.atomic, self.step = decompose_function(step=step)
+
+        if not self.is_final:
+            self.child = Decomposition(step=self.step)
+        else:
+            self.child = None
+
+    @classmethod
+    def from_tuple(cls, tuples: List[Tuple[str, int]]):
+        """
+        Method to create initial Pandas dataframe
+        """
+        # FIXME get rid of sde dependency
+        init = pd.DataFrame(
+            tuples, columns=["typeName", "quantity"]
+        ).set_index("typeName")
+        types = sde.types.set_index("typeName")
+        init = init.join(types)
+        init = init[["typeID", "quantity"]]
+        if len(init.index) != len(tuples):
+            raise ValueError("No such product in database!")
+
+        return Decomposition(step=init)
+
+    @property
+    def is_final(self):
+        return self.step.shape[0] == 0
+
+    def _required_materials(self):
+        if self.is_final:
+            return self.atomic
+        else:
+            return self.atomic.append(self.child._required_materials())
+
+    def __iter__(self):
+        def gen_helper():
+            init = self
+            while self.child:
+                yield init.step
+                init = self.child
+            yield init.step
+
+        return gen_helper()
+
+    @property
+    def required_materials(self):
+        return materials_from_atomic(self._required_materials())
+
+    @property
+    def prety_step(self):
+        # FIXME get rid of sde dependency
+        step = self.step.copy()
+        step = sde.append_products(step)[["typeID", "quantity", "activityID"]]
+        # BPC id instead of material ID
+        step = step.reset_index()
+        step["typeID"] = step["index"]
+        step = step.drop(columns=["index"])
+        types = sde.types.set_index("typeID")
+        step = sde.append_products(step).join(types)
+        step["runs_required"] = step["quantity"] / step["quantity_product"]
+        return step[["typeName", "quantity", "runs_required", "activityID"]]
+
+    @property
+    def prety_steps(self) -> List[pd.DataFrame]:
+        if not self.is_final:
+            return self.child.prety_steps + [self.prety_step]
+        return []
+
+    @classmethod
+    def empty_atomic(cls):
+        dataframe = pd.DataFrame(
+            [], columns=["typeID", "quantity", "basePrice"]
+        ).set_index("typeID")
+        return dataframe
+
+    def __repr__(self):
+        return f"Decomposition(steps: {self.step}, atomics: {self.atomic})"
+
+    def __str__(self):
+        # FIXME get_rid of sde dependency
+        result = ["Required materials:"]
+        result.append(self.required_materials.to_csv(index=False, sep="\t"))
+        for i, table in enumerate(self.prety_steps, start=1):
+            result.append("Step {} is: ".format(i))
+            result.append(table.to_csv(index=False, sep="\t"))
             result.append("Balancing runs:")
             prod = (
                 table[table["activityID"] == 1]
@@ -306,9 +280,9 @@ def production_schema(table: pd.DataFrame) -> List[str]:
 
             if prod:
                 for k, v in balance_runs(prod, setup.production_lines).items():
-                    result.append("{} : [{}]".format(k, v))
+                    result.append(f"{k} : [{v}]")
             if reac:
                 for k, v in balance_runs(reac, setup.reaction_lines).items():
-                    result.append("{} : [{}]".format(k, v))
+                    result.append(f"{k} : [{v}]")
 
-    return result
+        return "\n".join(result)
