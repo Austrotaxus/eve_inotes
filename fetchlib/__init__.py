@@ -85,47 +85,72 @@ def count_required(step: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     return run_price, runs_required
 
 
+def _pretify_step(table: pd.DataFrame):
+    step = sde.append_products(table)[["typeID", "quantity", "activityID"]]
+    # BPC id instead of material ID
+
+    # FIXME append products returns df with
+    # typeID of blueprint, not item. Need to be fixed
+    step = step.reset_index()
+    step["typeID"] = step["index"]
+    step = step.drop(columns=["index"])
+
+    types = sde.types.set_index("typeID")
+    step = sde.append_products(step).join(types)
+    step["runs_required"] = step["quantity"] / step["quantity_product"]
+
+    step = step.reset_index()
+    step["typeID"] = step["index"]
+    step = step.drop(columns=["index"])
+
+    return step[
+        ["typeName", "quantity", "runs_required", "activityID", "typeID"]
+    ]
+
+
 def full_expand(step: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Method to calculate next step,atomic based on previous step,atomic
     """
     types = sde.types
 
+    cleared = step[["typeID", "quantity"]]
     base_col_df = setup.collection.to_dataframe(
         setup.material_efficiency_impact(),
         setup.time_efficiency_impact(),
     )
     collection = sde.enrich_collection(base_col_df)
-    step = step.merge(collection, on="typeID", how="left").fillna(
+    merged = cleared.merge(collection, on="typeID", how="left").fillna(
         value={"me_impact": 1.0, "te_impact": 1.0, "run": 2**10}
     )
     # Add info to table to understand what we would need pn the next steps
-
-    appended = sde.append_everything(step)
+    appended = sde.append_everything(merged)
 
     removes = types[types["typeName"].isin(setup.non_productables())]["typeID"]
-    step = appended[~appended.isin(removes)]
+    removed = appended[~appended.isin(removes)]
 
-    step["quantity"], step["runs_required"] = count_required(step)
-    step = step.groupby(step.index).sum()
-    step = (
-        step[["quantity"]]
+    table = removed
+    table["quantity"], table["runs_required"] = count_required(table)
+
+    summed = table.groupby(table.index).sum()
+    quantity_table = (
+        summed[["quantity"]]
         .reset_index()
         .rename({"index": "typeID"}, axis="columns")
     )
-    atomic = step[
-        ~step["typeID"].isin(sde.productables["productTypeID"])
-        | step["typeID"].isin(removes)
+    atomic = quantity_table[
+        ~quantity_table["typeID"].isin(sde.productables["productTypeID"])
+        | quantity_table["typeID"].isin(removes)
     ]
-    step = step[
-        step["typeID"].isin(sde.productables["productTypeID"])
-        & ~step["typeID"].isin(removes)
+    new_step = quantity_table[
+        quantity_table["typeID"].isin(sde.productables["productTypeID"])
+        & ~quantity_table["typeID"].isin(removes)
     ]
 
-    return atomic, step
+    return _atomic_materials(atomic), _pretify_step(new_step)
 
 
-def materials_from_atomic(atomic: pd.DataFrame) -> pd.DataFrame:
+def _atomic_materials(atomic: pd.DataFrame) -> pd.DataFrame:
     """
     Method for creating table with quantities and names from id table
     """
@@ -140,7 +165,7 @@ def materials_from_atomic(atomic: pd.DataFrame) -> pd.DataFrame:
         ["typeName", "quantity"]
     ].astype({"quantity": "int64"})
 
-    return materials
+    return materials.reset_index()
 
 
 def balance_runs(runs_required: Dict[str, float], lines: int):
@@ -227,33 +252,20 @@ class Decomposition:
 
     @property
     def required_materials(self):
-        return materials_from_atomic(self._required_materials())
+        table = self._required_materials()
+        return table.groupby(["typeName"])["quantity"].sum()
 
     @property
-    def prety_step(self):
-        # FIXME get rid of sde dependency
-        step = self.step.copy()
-        step = sde.append_products(step)[["typeID", "quantity", "activityID"]]
-        # BPC id instead of material ID
-        step = step.reset_index()
-        step["typeID"] = step["index"]
-        step = step.drop(columns=["index"])
-        types = sde.types.set_index("typeID")
-        step = sde.append_products(step).join(types)
-        step["runs_required"] = step["quantity"] / step["quantity_product"]
-        return step[["typeName", "quantity", "runs_required", "activityID"]]
-
-    @property
-    def prety_steps(self) -> List[pd.DataFrame]:
+    def steps(self) -> List[pd.DataFrame]:
         if not self.is_final:
-            return self.child.prety_steps + [self.prety_step]
+            return self.child.steps + [self.step]
         return []
 
     @classmethod
     def empty_atomic(cls):
         dataframe = pd.DataFrame(
             [], columns=["typeID", "quantity", "basePrice"]
-        ).set_index("typeID")
+        )
         return dataframe
 
     def __repr__(self):
@@ -262,8 +274,8 @@ class Decomposition:
     def __str__(self):
         # FIXME get_rid of sde dependency
         result = ["Required materials:"]
-        result.append(self.required_materials.to_csv(index=False, sep="\t"))
-        for i, table in enumerate(self.prety_steps, start=1):
+        result.append(self.required_materials.to_csv(sep="\t"))
+        for i, table in enumerate(self.steps, start=1):
             result.append("Step {} is: ".format(i))
             result.append(table.to_csv(index=False, sep="\t"))
             result.append("Balancing runs:")
