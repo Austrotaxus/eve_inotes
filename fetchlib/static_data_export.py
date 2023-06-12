@@ -275,3 +275,6 @@ def get_human_size(size, precision=2):
         suffixIndex += 1  # increment the index of the suffix
         size = size / 1024.0  # apply the division
     return "%.*f%s" % (precision, size, suffixes[suffixIndex])
+
+
+sde = StaticDataExport()

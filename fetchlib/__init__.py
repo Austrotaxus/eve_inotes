@@ -6,16 +6,7 @@ import pandas as pd
 import numpy as np
 
 
-from .setup import Setup, sde
 from .utils import PATH
-
-
-try:
-    with open(PATH / "main_setup.pkl", "rb") as f:
-        setup = pickle.load(f)
-except Exception as e:
-    print(e)
-    setup = Setup()
 
 
 class Decompositor:
@@ -27,7 +18,7 @@ class Decompositor:
         types = self.sde.types
 
         cleared = step[["typeID", "quantity"]]
-        base_collection = setup.collection.to_dataframe(
+        base_collection = self.setup.collection.to_dataframe(
             self.setup.material_efficiency_impact(),
             self.setup.time_efficiency_impact(),
         )
@@ -38,9 +29,9 @@ class Decompositor:
         # Add info to table to understand what we would need pn the next steps
         appended = self.sde.append_everything(merged)
 
-        to_remove = types[types["typeName"].isin(setup.non_productables())][
-            "typeID"
-        ]
+        to_remove = types[
+            types["typeName"].isin(self.setup.non_productables())
+        ]["typeID"]
         filtered = appended[~appended.isin(to_remove)]
 
         table = filtered
@@ -197,7 +188,7 @@ class Decomposition:
         return "\n".join(result)
 
 
-def balancify_runs(decomposition: Decomposition) -> str:
+def balancify_runs(decomposition: Decomposition, setup) -> str:
     def balance_runs(runs_required: Dict[str, float], lines: int):
         """Method to calculate lines loading according to lines amount"""
         # FIXME Job running time is not counted right now

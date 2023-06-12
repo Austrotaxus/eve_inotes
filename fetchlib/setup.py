@@ -2,7 +2,7 @@ from typing import Iterable
 
 import pickle
 
-from fetchlib.static_data_export import StaticDataExport
+from fetchlib.static_data_export import sde
 from fetchlib.utils import (
     BlueprintCollection,
     Blueprint,
@@ -11,8 +11,6 @@ from fetchlib.utils import (
     CitadelTypes,
     PATH,
 )
-
-sde = StaticDataExport()
 
 
 class Setup:
@@ -86,3 +84,6 @@ class Setup:
     def set_lines_amount(self, reaction: int, production: int):
         self.reaction_lines = reaction
         self.production_lines = production
+
+
+setup = Setup()
