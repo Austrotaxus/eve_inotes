@@ -23,43 +23,6 @@ class Decompositor:
         self.sde = sde
         self.setup = setup
 
-    def _pretify_step(self, table: pd.DataFrame):
-        """
-        Helper for fancyfing step
-        """
-        step = sde.append_products(table)[["typeID", "quantity", "activityID"]]
-
-        # Reseting typeID to coresponds item, not item's blueprint
-        step["typeID"] = step.index
-
-        types = sde.types.set_index("typeID")
-        step = sde.append_products(step).join(types)
-        step["runs_required"] = step["quantity"] / step["quantity_product"]
-
-        # Reseting typeID to coresponds item, not item's blueprint
-        step["typeID"] = step.index
-
-        return step[
-            ["typeName", "quantity", "runs_required", "activityID", "typeID"]
-        ]
-
-    def _atomic_materials(self, atomic: pd.DataFrame) -> pd.DataFrame:
-        """
-        Helper for fancyfing atomic
-        """
-        types = sde.types
-        materials = (
-            atomic[["typeID", "quantity"]]
-            .astype({"typeID": "int64"})
-            .groupby("typeID")
-            .sum()
-        )
-        materials = materials.join(
-            types.set_index("typeID"), lsuffix="-atom_"
-        )[["typeName", "quantity"]].astype({"quantity": "int64"})
-
-        return materials.reset_index()
-
     def __call__(self, step: pd.DataFrame):
         types = self.sde.types
 
@@ -98,7 +61,7 @@ class Decompositor:
             & ~quantity_table["typeID"].isin(to_remove)
         ]
 
-        return self._atomic_materials(atomic), self._pretify_step(new_step)
+        return sde.atomic_materials(atomic), sde.pretify_step(new_step)
 
     @staticmethod
     def count_required(
@@ -167,24 +130,25 @@ class Decompositor:
             return r_req
 
         run_price = step.apply(price_in_materials, axis=1)
-        runs_required = step.apply(runs_required, axis=1)
+
         return run_price, runs_required
 
 
 class Decomposition:
     def __init__(self, *, step, decompositor):
-        self.atomic, self.step = decompositor(step=step)
+        self.step = step
+        self.atomic, next_step = decompositor(step=step)
 
-        if not self.is_final:
+        if next_step.shape[0] != 0:
             self.child = Decomposition(
-                step=self.step, decompositor=decompositor
+                step=next_step, decompositor=decompositor
             )
         else:
             self.child = None
 
     @property
     def is_final(self):
-        return self.step.shape[0] == 0
+        return self.child is None
 
     def _required_materials(self):
         if self.is_final:
@@ -211,7 +175,7 @@ class Decomposition:
     def steps(self) -> List[pd.DataFrame]:
         if not self.is_final:
             return self.child.steps + [self.step]
-        return []
+        return [self.step]
 
     @classmethod
     def empty_atomic(cls):

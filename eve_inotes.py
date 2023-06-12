@@ -34,9 +34,6 @@ class InqController:
 
         decomposition = Decomposition(step=table, decompositor=decompositor)
         print(str(decomposition))
-        import pdb
-
-        pdb.set_trace()
         print(balancify_runs(decomposition))
         return string
 

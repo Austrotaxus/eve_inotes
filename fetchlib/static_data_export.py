@@ -85,6 +85,44 @@ class AbstractDataExport(ABC):
         with_prices = self.append_prices(with_materials)
         return with_prices
 
+    def pretify_step(self, table: pd.DataFrame):
+        """
+        Helper for fancyfing step
+        """
+        step = self.append_products(table)[
+            ["typeID", "quantity", "activityID"]
+        ]
+
+        # Reseting typeID to coresponds item, not item's blueprint
+        step["typeID"] = step.index
+
+        types = self.types.set_index("typeID")
+        step = self.append_products(step).join(types)
+        step["runs_required"] = step["quantity"] / step["quantity_product"]
+
+        # Reseting typeID to coresponds item, not item's blueprint
+        step["typeID"] = step.index
+
+        return step[
+            ["typeName", "quantity", "runs_required", "activityID", "typeID"]
+        ]
+
+    def atomic_materials(self, atomic: pd.DataFrame) -> pd.DataFrame:
+        """
+        Helper for fancyfing atomic
+        """
+        types = self.types
+        materials = (
+            atomic[["typeID", "quantity"]]
+            .astype({"typeID": "int64"})
+            .groupby("typeID")
+            .sum()
+        )
+        materials = materials.join(
+            types.set_index("typeID"), lsuffix="-atom_"
+        )[["typeName", "quantity"]].astype({"quantity": "int64"})
+        return materials.reset_index()
+
     def create_init_table(self, **kwargs) -> pd.DataFrame:
         """
         Method to create initial Pandas dataframe
@@ -99,7 +137,8 @@ class AbstractDataExport(ABC):
         with_types = init.join(types)[["typeID", "quantity"]]
         if diff := set(kwargs.keys()) - set(with_types.index):
             raise ValueError(f"No such products in database: {diff}")
-        return with_types
+        prety = self.pretify_step(with_types)
+        return prety
 
 
 class StaticDataExport(AbstractDataExport):
