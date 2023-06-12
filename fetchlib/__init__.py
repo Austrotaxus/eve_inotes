@@ -18,159 +18,49 @@ except Exception as e:
     setup = Setup()
 
 
-def count_required(step: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    def price_in_materials(x):
-        ideal_run_size = np.ceil(x.quantity / x.quantity_product)
-        single_line_run_size = int(np.minimum(ideal_run_size, x.run))
-        paralel_jobs_required = np.ceil(
-            (x.quantity / (single_line_run_size * x.quantity_product))
-        ).astype("int32")
-        # For production
-        if x.activityID == 1:
-            single_line_run_price = int(
-                np.ceil(
-                    x.quantity_materials * single_line_run_size * x.me_impact
-                )
-            )
-            single_line_run_price = np.maximum(
-                single_line_run_price, single_line_run_size
-            )
-
-            trim_size = (
-                x.quantity
-                - single_line_run_size
-                * paralel_jobs_required
-                * x.quantity_product
-            )
-            trim_price = int(
-                np.ceil(
-                    x.quantity_materials
-                    * trim_size
-                    * x.me_impact
-                    / x.quantity_product
-                )
-            )
-            trim_price = np.maximum(trim_price, trim_size)
-
-            run_price = (
-                single_line_run_price * paralel_jobs_required
-            ) + trim_price
-
-        # For reaction
-        elif x.activityID == 11:
-            r_req = int(np.ceil((x.quantity / x.quantity_product)))
-            run_price = x.quantity_materials * r_req
-        else:
-            raise Exception("Unknown reaction ID")
-        return run_price
-
-    def runs_required(x):
-        run_size = np.minimum(x.quantity, x.run)
-        jobs_required = (np.ceil(x.quantity / run_size)).astype("int32")
-        # count for production
-        if x.activityID == 1:
-            r_req = int(np.ceil(jobs_required * run_size / x.quantity_product))
-        # count for reaction
-        elif x.activityID == 11:
-            r_req = int(np.ceil((x.quantity / x.quantity_product)))
-        else:
-            r_req = 0
-        return r_req
-
-    run_price = step.apply(price_in_materials, axis=1)
-    runs_required = step.apply(runs_required, axis=1)
-    return run_price, runs_required
-
-
-def _pretify_step(table: pd.DataFrame):
-    step = sde.append_products(table)[["typeID", "quantity", "activityID"]]
-    # BPC id instead of material ID
-
-    # FIXME append products returns df with
-    # typeID of blueprint, not item. Need to be fixed
-    step = step.reset_index()
-    step["typeID"] = step["index"]
-    step = step.drop(columns=["index"])
-
-    types = sde.types.set_index("typeID")
-    step = sde.append_products(step).join(types)
-    step["runs_required"] = step["quantity"] / step["quantity_product"]
-
-    step = step.reset_index()
-    step["typeID"] = step["index"]
-    step = step.drop(columns=["index"])
-
-    return step[
-        ["typeName", "quantity", "runs_required", "activityID", "typeID"]
-    ]
-
-
-def full_expand(step: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """
-    Method to calculate next step,atomic based on previous step,atomic
-    """
-    types = sde.types
-
-    cleared = step[["typeID", "quantity"]]
-    base_col_df = setup.collection.to_dataframe(
-        setup.material_efficiency_impact(),
-        setup.time_efficiency_impact(),
-    )
-    collection = sde.enrich_collection(base_col_df)
-    merged = cleared.merge(collection, on="typeID", how="left").fillna(
-        value={"me_impact": 1.0, "te_impact": 1.0, "run": 2**10}
-    )
-    # Add info to table to understand what we would need pn the next steps
-    appended = sde.append_everything(merged)
-
-    removes = types[types["typeName"].isin(setup.non_productables())]["typeID"]
-    removed = appended[~appended.isin(removes)]
-
-    table = removed
-    table["quantity"], table["runs_required"] = count_required(table)
-
-    summed = table.groupby(table.index).sum()
-    quantity_table = (
-        summed[["quantity"]]
-        .reset_index()
-        .rename({"index": "typeID"}, axis="columns")
-    )
-    atomic = quantity_table[
-        ~quantity_table["typeID"].isin(sde.productables["productTypeID"])
-        | quantity_table["typeID"].isin(removes)
-    ]
-    new_step = quantity_table[
-        quantity_table["typeID"].isin(sde.productables["productTypeID"])
-        & ~quantity_table["typeID"].isin(removes)
-    ]
-
-    return _atomic_materials(atomic), _pretify_step(new_step)
-
-
-def _atomic_materials(atomic: pd.DataFrame) -> pd.DataFrame:
-    """
-    Method for creating table with quantities and names from id table
-    """
-    types = sde.types
-    materials = (
-        atomic[["typeID", "quantity"]]
-        .astype({"typeID": "int64"})
-        .groupby("typeID")
-        .sum()
-    )
-    materials = materials.join(types.set_index("typeID"), lsuffix="-atom_")[
-        ["typeName", "quantity"]
-    ].astype({"quantity": "int64"})
-
-    return materials.reset_index()
-
-
 class Decompositor:
-    def __init__(self, sde=sde, setup=setup):
+    def __init__(self, sde, setup):
         self.sde = sde
         self.setup = setup
 
-    def __apply__(self, step: pd.DataFrame):
+    def _pretify_step(self, table: pd.DataFrame):
+        """
+        Helper for fancyfing step
+        """
+        step = sde.append_products(table)[["typeID", "quantity", "activityID"]]
+
+        # Reseting typeID to coresponds item, not item's blueprint
+        step["typeID"] = step.index
+
+        types = sde.types.set_index("typeID")
+        step = sde.append_products(step).join(types)
+        step["runs_required"] = step["quantity"] / step["quantity_product"]
+
+        # Reseting typeID to coresponds item, not item's blueprint
+        step["typeID"] = step.index
+
+        return step[
+            ["typeName", "quantity", "runs_required", "activityID", "typeID"]
+        ]
+
+    def _atomic_materials(self, atomic: pd.DataFrame) -> pd.DataFrame:
+        """
+        Helper for fancyfing atomic
+        """
+        types = sde.types
+        materials = (
+            atomic[["typeID", "quantity"]]
+            .astype({"typeID": "int64"})
+            .groupby("typeID")
+            .sum()
+        )
+        materials = materials.join(
+            types.set_index("typeID"), lsuffix="-atom_"
+        )[["typeName", "quantity"]].astype({"quantity": "int64"})
+
+        return materials.reset_index()
+
+    def __call__(self, step: pd.DataFrame):
         types = self.sde.types
 
         cleared = step[["typeID", "quantity"]]
@@ -191,7 +81,7 @@ class Decompositor:
         filtered = appended[~appended.isin(to_remove)]
 
         table = filtered
-        table["quantity"], table["runs_required"] = count_required(table)
+        table["quantity"], table["runs_required"] = self.count_required(table)
 
         summed = table.groupby(table.index).sum()
         quantity_table = (
@@ -208,15 +98,87 @@ class Decompositor:
             & ~quantity_table["typeID"].isin(to_remove)
         ]
 
-        return _atomic_materials(atomic), _pretify_step(new_step)
+        return self._atomic_materials(atomic), self._pretify_step(new_step)
+
+    @staticmethod
+    def count_required(
+        step: pd.DataFrame,
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        def price_in_materials(x):
+            ideal_run_size = np.ceil(x.quantity / x.quantity_product)
+            single_line_run_size = int(np.minimum(ideal_run_size, x.run))
+            paralel_jobs_required = np.ceil(
+                (x.quantity / (single_line_run_size * x.quantity_product))
+            ).astype("int32")
+            # For production
+            if x.activityID == 1:
+                single_line_run_price = int(
+                    np.ceil(
+                        x.quantity_materials
+                        * single_line_run_size
+                        * x.me_impact
+                    )
+                )
+                single_line_run_price = np.maximum(
+                    single_line_run_price, single_line_run_size
+                )
+
+                trim_size = (
+                    x.quantity
+                    - single_line_run_size
+                    * paralel_jobs_required
+                    * x.quantity_product
+                )
+                trim_price = int(
+                    np.ceil(
+                        x.quantity_materials
+                        * trim_size
+                        * x.me_impact
+                        / x.quantity_product
+                    )
+                )
+                trim_price = np.maximum(trim_price, trim_size)
+
+                run_price = (
+                    single_line_run_price * paralel_jobs_required
+                ) + trim_price
+
+            # For reaction
+            elif x.activityID == 11:
+                r_req = int(np.ceil((x.quantity / x.quantity_product)))
+                run_price = x.quantity_materials * r_req
+            else:
+                raise Exception("Unknown reaction ID")
+            return run_price
+
+        def runs_required(x):
+            run_size = np.minimum(x.quantity, x.run)
+            jobs_required = (np.ceil(x.quantity / run_size)).astype("int32")
+            # count for production
+            if x.activityID == 1:
+                r_req = int(
+                    np.ceil(jobs_required * run_size / x.quantity_product)
+                )
+            # count for reaction
+            elif x.activityID == 11:
+                r_req = int(np.ceil((x.quantity / x.quantity_product)))
+            else:
+                r_req = 0
+            return r_req
+
+        run_price = step.apply(price_in_materials, axis=1)
+        runs_required = step.apply(runs_required, axis=1)
+        return run_price, runs_required
 
 
 class Decomposition:
-    def __init__(self, *, step, decompose_function=full_expand):
-        self.atomic, self.step = decompose_function(step=step)
+    def __init__(self, *, step, decompositor):
+        self.atomic, self.step = decompositor(step=step)
 
         if not self.is_final:
-            self.child = Decomposition(step=self.step)
+            self.child = Decomposition(
+                step=self.step, decompositor=decompositor
+            )
         else:
             self.child = None
 
@@ -284,6 +246,7 @@ def balancify_runs(decomposition: Decomposition) -> str:
             max_loaded = max(load.items(), key=operator.itemgetter(1))[0]
             lines_distribution[max_loaded] += 1
         lines_load = {}
+
         for key, value in lines_distribution.items():
             lines_load[key] = ""
             int_runs_required = int(np.ceil(runs_required[key]))

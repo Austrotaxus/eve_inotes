@@ -2,7 +2,7 @@ import os
 
 from PyInquirer import prompt
 
-from fetchlib import Decomposition, sde, setup, balancify_runs
+from fetchlib import Decomposition, Decompositor, sde, setup, balancify_runs
 from fetchlib.utils import CitadelTypes, ProductionClasses, Rigs, SpaceTypes
 
 
@@ -30,8 +30,13 @@ class InqController:
             pairs.append((" ".join(product), int(amount)))
 
         table = sde.create_init_table(**dict(pairs))
-        decomposition = Decomposition(table)
+        decompositor = Decompositor(sde, setup)
+
+        decomposition = Decomposition(step=table, decompositor=decompositor)
         print(str(decomposition))
+        import pdb
+
+        pdb.set_trace()
         print(balancify_runs(decomposition))
         return string
 
@@ -203,7 +208,9 @@ class InqController:
 
         product, amount = answers["product"].title(), int(answers["amount"])
         table = sde.create_init_table(**{product: amount})
-        decomposition = Decomposition(step=table)
+        decompositor = Decompositor(sde, setup)
+
+        decomposition = Decomposition(step=table, decompositor=decompositor)
         print(str(decomposition))
         print(balancify_runs(decomposition))
         return answers
