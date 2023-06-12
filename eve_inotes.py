@@ -2,7 +2,7 @@ import os
 
 from PyInquirer import prompt
 
-from fetchlib import Decomposition, sde, setup
+from fetchlib import Decomposition, sde, setup, balancify_runs
 from fetchlib.utils import CitadelTypes, ProductionClasses, Rigs, SpaceTypes
 
 
@@ -32,6 +32,7 @@ class InqController:
         table = sde.create_init_table(**dict(pairs))
         decomposition = Decomposition(table)
         print(str(decomposition))
+        print(balancify_runs(decomposition))
         return string
 
     def set_lines_amount(self):
@@ -204,6 +205,7 @@ class InqController:
         table = sde.create_init_table(**{product: amount})
         decomposition = Decomposition(step=table)
         print(str(decomposition))
+        print(balancify_runs(decomposition))
         return answers
 
     def calculate_materials(self):
