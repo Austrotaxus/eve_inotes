@@ -198,7 +198,44 @@ class Decompositor:
         self.setup = setup
 
     def __apply__(self, step: pd.DataFrame):
-        pass
+        types = self.sde.types
+
+        cleared = step[["typeID", "quantity"]]
+        base_collection = setup.collection.to_dataframe(
+            self.setup.material_efficiency_impact(),
+            self.setup.time_efficiency_impact(),
+        )
+        collection = sde.enrich_collection(base_collection)
+        merged = cleared.merge(collection, on="typeID", how="left").fillna(
+            value={"me_impact": 1.0, "te_impact": 1.0, "run": 2**10}
+        )
+        # Add info to table to understand what we would need pn the next steps
+        appended = self.sde.append_everything(merged)
+
+        to_remove = types[types["typeName"].isin(setup.non_productables())][
+            "typeID"
+        ]
+        filtered = appended[~appended.isin(to_remove)]
+
+        table = filtered
+        table["quantity"], table["runs_required"] = count_required(table)
+
+        summed = table.groupby(table.index).sum()
+        quantity_table = (
+            summed[["quantity"]]
+            .reset_index()
+            .rename({"index": "typeID"}, axis="columns")
+        )
+        atomic = quantity_table[
+            ~quantity_table["typeID"].isin(sde.productables["productTypeID"])
+            | quantity_table["typeID"].isin(to_remove)
+        ]
+        new_step = quantity_table[
+            quantity_table["typeID"].isin(sde.productables["productTypeID"])
+            & ~quantity_table["typeID"].isin(to_remove)
+        ]
+
+        return _atomic_materials(atomic), _pretify_step(new_step)
 
 
 class Decomposition:
@@ -209,23 +246,6 @@ class Decomposition:
             self.child = Decomposition(step=self.step)
         else:
             self.child = None
-
-    @classmethod
-    def from_tuple(cls, tuples: List[Tuple[str, int]]):
-        """
-        Method to create initial Pandas dataframe
-        """
-        # FIXME get rid of sde dependency
-        init = pd.DataFrame(
-            tuples, columns=["typeName", "quantity"]
-        ).set_index("typeName")
-        types = sde.types.set_index("typeName")
-        init = init.join(types)
-        init = init[["typeID", "quantity"]]
-        if len(init.index) != len(tuples):
-            raise ValueError("No such product in database!")
-
-        return Decomposition(step=init)
 
     @property
     def is_final(self):

@@ -2,16 +2,8 @@ import os
 
 from PyInquirer import prompt
 
-from fetchlib import (
-    setup,
-    Decomposition,
-)
-from fetchlib.utils import (
-    SpaceTypes,
-    CitadelTypes,
-    Rigs,
-    ProductionClasses,
-)
+from fetchlib import Decomposition, sde, setup
+from fetchlib.utils import CitadelTypes, ProductionClasses, Rigs, SpaceTypes
 
 
 class InqController:
@@ -37,7 +29,8 @@ class InqController:
             *product, amount = line.split()
             pairs.append((" ".join(product), int(amount)))
 
-        decomposition = Decomposition.from_tuple(pairs)
+        table = sde.create_init_table(**dict(pairs))
+        decomposition = Decomposition(table)
         print(str(decomposition))
         return string
 
@@ -208,8 +201,8 @@ class InqController:
         answers = prompt(questions)
 
         product, amount = answers["product"].title(), int(answers["amount"])
-        table = [(product, amount)]
-        decomposition = Decomposition.from_tuple(table)
+        table = sde.create_init_table(**{product: amount})
+        decomposition = Decomposition(step=table)
         print(str(decomposition))
         return answers
 
