@@ -1,18 +1,11 @@
 import os
 
-from PyInquirer import style_from_dict, prompt
+from PyInquirer import prompt
 
-from fetchlib import (
-    setup,
-    Decomposition,
-)
-from fetchlib.utils import (
-    SpaceTypes,
-    CitadelTypes,
-    Rigs,
-    Blueprint,
-    ProductionClasses,
-)
+from fetchlib import Decomposition, Decompositor, balancify_runs
+from fetchlib.setup import setup
+from fetchlib.static_data_export import sde
+from fetchlib.utils import CitadelTypes, ProductionClasses, Rigs, SpaceTypes
 
 
 class InqController:
@@ -38,8 +31,12 @@ class InqController:
             *product, amount = line.split()
             pairs.append((" ".join(product), int(amount)))
 
-        decomposition = Decomposition.from_tuple(pairs)
+        table = sde.create_init_table(**dict(pairs))
+        decompositor = Decompositor(sde, setup)
+
+        decomposition = Decomposition(step=table, decompositor=decompositor)
         print(str(decomposition))
+        print(balancify_runs(decomposition, setup))
         return string
 
     def set_lines_amount(self):
@@ -209,9 +206,12 @@ class InqController:
         answers = prompt(questions)
 
         product, amount = answers["product"].title(), int(answers["amount"])
-        table = [(product, amount)]
-        decomposition = Decomposition.from_tuple(table)
+        table = sde.create_init_table(**{product: amount})
+        decompositor = Decompositor(sde, setup)
+
+        decomposition = Decomposition(step=table, decompositor=decompositor)
         print(str(decomposition))
+        print(balancify_runs(decomposition, setup))
         return answers
 
     def calculate_materials(self):

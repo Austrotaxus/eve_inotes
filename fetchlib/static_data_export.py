@@ -52,11 +52,11 @@ class AbstractDataExport(ABC):
         return result
 
     @property
-    def alterated_materials(self) -> pd.DataFrame:
+    def filtrated_materials(self) -> pd.DataFrame:
         # Remove everything but 'reaction' and 'production'
         materials = self.materials
         result = materials[materials["activityID"].isin([1, 11])]
-        return result.set_index("typeID")
+        return result
 
     @property
     def productables(self) -> pd.DataFrame:
@@ -65,9 +65,10 @@ class AbstractDataExport(ABC):
         products = products[products["activityID"].isin((1, 11))]
         return products
 
-    def append_materials(self, step: pd.DataFrame) -> pd.DataFrame:
-        result = step.set_index("typeID").join(
-            self.alterated_materials, how="inner", rsuffix="_materials"
+    def append_materials(self, table: pd.DataFrame) -> pd.DataFrame:
+        filtrated = self.filtrated_materials.set_index("typeID")
+        result = table.set_index("typeID").join(
+            filtrated, how="inner", rsuffix="_materials"
         )
         return result
 
@@ -83,6 +84,61 @@ class AbstractDataExport(ABC):
         with_materials = self.append_materials(with_products)
         with_prices = self.append_prices(with_materials)
         return with_prices
+
+    def pretify_step(self, table: pd.DataFrame):
+        """
+        Helper for fancyfing step
+        """
+        step = self.append_products(table)[
+            ["typeID", "quantity", "activityID"]
+        ]
+
+        # Reseting typeID to coresponds item, not item's blueprint
+        step["typeID"] = step.index
+
+        types = self.types.set_index("typeID")
+        step = self.append_products(step).join(types)
+        step["runs_required"] = step["quantity"] / step["quantity_product"]
+
+        # Reseting typeID to coresponds item, not item's blueprint
+        step["typeID"] = step.index
+
+        return step[
+            ["typeName", "quantity", "runs_required", "activityID", "typeID"]
+        ]
+
+    def atomic_materials(self, atomic: pd.DataFrame) -> pd.DataFrame:
+        """
+        Helper for fancyfing atomic
+        """
+        types = self.types
+        materials = (
+            atomic[["typeID", "quantity"]]
+            .astype({"typeID": "int64"})
+            .groupby("typeID")
+            .sum()
+        )
+        materials = materials.join(
+            types.set_index("typeID"), lsuffix="-atom_"
+        )[["typeName", "quantity"]].astype({"quantity": "int64"})
+        return materials.reset_index()
+
+    def create_init_table(self, **kwargs) -> pd.DataFrame:
+        """
+        Method to create initial Pandas dataframe
+
+        params:
+        kwargs: Dict[str, int] - dictionary of items to produce with corresponding quantities
+        """
+        init = pd.DataFrame(
+            kwargs.items(), columns=["typeName", "quantity"]
+        ).set_index("typeName")
+        types = self.types.set_index("typeName")
+        with_types = init.join(types)[["typeID", "quantity"]]
+        if diff := set(kwargs.keys()) - set(with_types.index):
+            raise ValueError(f"No such products in database: {diff}")
+        prety = self.pretify_step(with_types)
+        return prety
 
 
 class StaticDataExport(AbstractDataExport):
@@ -219,3 +275,6 @@ def get_human_size(size, precision=2):
         suffixIndex += 1  # increment the index of the suffix
         size = size / 1024.0  # apply the division
     return "%.*f%s" % (precision, size, suffixes[suffixIndex])
+
+
+sde = StaticDataExport()
