@@ -2,7 +2,9 @@ import os
 
 from PyInquirer import prompt
 
-from fetchlib import Decomposition, Decompositor, balancify_runs
+from fetchlib import balancify_runs
+from fetchlib.decomposition import Decomposition
+from fetchlib.decompositor import Decompositor
 from fetchlib.setup import setup
 from fetchlib.static_data_export import sde
 from fetchlib.utils import CitadelTypes, ProductionClasses, Rigs, SpaceTypes
