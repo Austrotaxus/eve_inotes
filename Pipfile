@@ -11,6 +11,7 @@ pysqlite3 = "*"
 numpy = "==1.23"
 
 [dev-packages]
+pytest = "*"
 
 [requires]
 python_version = "3.9"

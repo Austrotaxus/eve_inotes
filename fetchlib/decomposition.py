@@ -32,9 +32,9 @@ class Decomposition:
     def __iter__(self):
         def gen_helper():
             init = self
-            while self.child:
+            while init.child:
                 yield init.step
-                init = self.child
+                init = init.child
             yield init.step
 
         return gen_helper()

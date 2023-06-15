@@ -32,7 +32,7 @@ class AbstractDataExport(ABC):
         raise NotImplementedError
 
     @abstractproperty
-    def market_gropups(self):
+    def market_groups(self):
         raise NotImplementedError
 
     def enrich_collection(self, collection: pd.DataFrame) -> pd.DataFrame:
@@ -167,19 +167,37 @@ class StaticDataExport(AbstractDataExport):
 
     def __cache_tables(self):
         types_q = """select  * from  invTypes """
-        activities_q = """select * from industryActivity"""
-        products_q = """select * from industryActivityProducts"""
+
+        activities_q = """
+            select a.typeID, activityID, time
+            from
+                industryActivity a join invTypes t
+            on
+                a.typeID = t.typeID
+            where
+                t.published and
+                a.activityID in (1,11)
+            """
+
+        products_q = """
+            select
+                p.typeID as typeID, activityID, productTypeID, quantity
+            from
+                industryActivityProducts p join invTypes t
+            on p.typeID == t.typeID
+            where
+                t.published and
+                p.activityID in (1,11)
+
+            """
+
         materials_q = """select * from industryActivityMaterials"""
         marketgroups_q = """select * from invMarketGroups"""
 
-        # Remove 'test reaction' from tables
-        activities = pd.read_sql_query(activities_q, self.conn)
-        products = pd.read_sql_query(products_q, self.conn)
-
         self._tables = {
             "types": pd.read_sql_query(types_q, self.conn),
-            "activities": activities,
-            "products": products,
+            "activities": pd.read_sql_query(activities_q, self.conn),
+            "products": pd.read_sql_query(products_q, self.conn),
             "materials": pd.read_sql_query(materials_q, self.conn),
             "marketgroups": pd.read_sql_query(marketgroups_q, self.conn),
         }
@@ -263,7 +281,7 @@ class StaticDataExport(AbstractDataExport):
         return self._tables["materials"]
 
     @property
-    def market_gropups(self):
+    def market_groups(self):
         return self._tables["marketgroups"]
 
 
