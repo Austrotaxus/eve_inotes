@@ -39,15 +39,11 @@ class Decompositor:
             .rename({"index": "typeID"}, axis="columns")
         )
         atomic = quantity_table[
-            ~quantity_table["typeID"].isin(
-                self.sde.productables["productTypeID"]
-            )
+            ~quantity_table["typeID"].isin(self.sde.products["productTypeID"])
             | quantity_table["typeID"].isin(to_remove)
         ]
         new_step = quantity_table[
-            quantity_table["typeID"].isin(
-                self.sde.productables["productTypeID"]
-            )
+            quantity_table["typeID"].isin(self.sde.products["productTypeID"])
             & ~quantity_table["typeID"].isin(to_remove)
         ]
 

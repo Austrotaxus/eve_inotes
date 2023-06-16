@@ -45,28 +45,14 @@ class AbstractDataExport(ABC):
 
     def append_products(self, step: pd.DataFrame) -> pd.DataFrame:
         result = step.set_index("typeID").join(
-            self.productables.set_index("productTypeID"),
+            self.products.set_index("productTypeID"),
             rsuffix="_product",
             how="inner",
         )
         return result
 
-    @property
-    def filtrated_materials(self) -> pd.DataFrame:
-        # Remove everything but 'reaction' and 'production'
-        materials = self.materials
-        result = materials[materials["activityID"].isin([1, 11])]
-        return result
-
-    @property
-    def productables(self) -> pd.DataFrame:
-        products = self.products
-        # Keep only reaction and production
-        products = products[products["activityID"].isin((1, 11))]
-        return products
-
     def append_materials(self, table: pd.DataFrame) -> pd.DataFrame:
-        filtrated = self.filtrated_materials.set_index("typeID")
+        filtrated = self.materials.set_index("typeID")
         result = table.set_index("typeID").join(
             filtrated, how="inner", rsuffix="_materials"
         )
@@ -142,12 +128,12 @@ class AbstractDataExport(ABC):
 
 
 class StaticDataExport(AbstractDataExport):
-    def __init__(self):
-        self.db = PATH / DB_NAME
-        if not (PATH / DB_NAME).exists():
+    def __init__(self, db_path=PATH / DB_NAME):
+        self.db_path = db_path
+        if not (self.db_path).exists():
             self.__download_db()
             self.__bunzip2()
-        self.conn = sqlite3.connect(str(self.db))
+        self.conn = sqlite3.connect(str(self.db_path))
         self.__cache_tables()
 
     def __get_group_content_names(self, group_id):
@@ -191,7 +177,13 @@ class StaticDataExport(AbstractDataExport):
 
             """
 
-        materials_q = """select * from industryActivityMaterials"""
+        materials_q = """
+            select *
+            from
+                industryActivityMaterials
+            where activityID in (1,11)
+            """
+
         marketgroups_q = """select * from invMarketGroups"""
 
         self._tables = {
@@ -234,7 +226,7 @@ class StaticDataExport(AbstractDataExport):
 
     def __bunzip2(self):
         source_file = Path(PATH, OUTPUT_FILENAME)
-        dest_file = self.db
+        dest_file = self.db_path
         try:
             print("Decompressing file ... ", end="")
             with open(source_file, "rb") as bz2file:
