@@ -6,8 +6,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-from fetchlib.utils import CLASSES_GROUPS, PATH
-
+from fetchlib.utils import CLASSES_GROUPS, PATH, ProductionClass, ReactionClass
 
 DB_NAME = "eve.db"
 OUTPUT_FILENAME = "eve.db.bz2file"
@@ -45,28 +44,14 @@ class AbstractDataExport(ABC):
 
     def append_products(self, step: pd.DataFrame) -> pd.DataFrame:
         result = step.set_index("typeID").join(
-            self.productables.set_index("productTypeID"),
+            self.products.set_index("productTypeID"),
             rsuffix="_product",
             how="inner",
         )
         return result
 
-    @property
-    def filtrated_materials(self) -> pd.DataFrame:
-        # Remove everything but 'reaction' and 'production'
-        materials = self.materials
-        result = materials[materials["activityID"].isin([1, 11])]
-        return result
-
-    @property
-    def productables(self) -> pd.DataFrame:
-        products = self.products
-        # Keep only reaction and production
-        products = products[products["activityID"].isin((1, 11))]
-        return products
-
     def append_materials(self, table: pd.DataFrame) -> pd.DataFrame:
-        filtrated = self.filtrated_materials.set_index("typeID")
+        filtrated = self.materials.set_index("typeID")
         result = table.set_index("typeID").join(
             filtrated, how="inner", rsuffix="_materials"
         )
@@ -89,9 +74,7 @@ class AbstractDataExport(ABC):
         """
         Helper for fancyfing step
         """
-        step = self.append_products(table)[
-            ["typeID", "quantity", "activityID"]
-        ]
+        step = self.append_products(table)[["typeID", "quantity", "activityID"]]
 
         # Reseting typeID to coresponds item, not item's blueprint
         step["typeID"] = step.index
@@ -103,9 +86,7 @@ class AbstractDataExport(ABC):
         # Reseting typeID to coresponds item, not item's blueprint
         step["typeID"] = step.index
 
-        return step[
-            ["typeName", "quantity", "runs_required", "activityID", "typeID"]
-        ]
+        return step[["typeName", "quantity", "runs_required", "activityID", "typeID"]]
 
     def atomic_materials(self, atomic: pd.DataFrame) -> pd.DataFrame:
         """
@@ -118,9 +99,9 @@ class AbstractDataExport(ABC):
             .groupby("typeID")
             .sum()
         )
-        materials = materials.join(
-            types.set_index("typeID"), lsuffix="-atom_"
-        )[["typeName", "quantity"]].astype({"quantity": "int64"})
+        materials = materials.join(types.set_index("typeID"), lsuffix="-atom_")[
+            ["typeName", "quantity"]
+        ].astype({"quantity": "int64"})
         return materials.reset_index()
 
     def create_init_table(self, **kwargs) -> pd.DataFrame:
@@ -130,9 +111,9 @@ class AbstractDataExport(ABC):
         params:
         kwargs: Dict[str, int] - dictionary of items to produce with corresponding quantities
         """
-        init = pd.DataFrame(
-            kwargs.items(), columns=["typeName", "quantity"]
-        ).set_index("typeName")
+        init = pd.DataFrame(kwargs.items(), columns=["typeName", "quantity"]).set_index(
+            "typeName"
+        )
         types = self.types.set_index("typeName")
         with_types = init.join(types)[["typeID", "quantity"]]
         if diff := set(kwargs.keys()) - set(with_types.index):
@@ -140,30 +121,26 @@ class AbstractDataExport(ABC):
         prety = self.pretify_step(with_types)
         return prety
 
+    def get_class_contents(self, production_class) -> pd.DataFrame:
+        """
+        Obtain all the typenames which belongs to production class from utils
+        """
+        group_ids = list(CLASSES_GROUPS[production_class].values())
+        return self.get_types_by_group_ids(*group_ids)
+
+    def get_types_by_group_ids(self, *group_ids):
+        res = list(self.types[self.types["marketGroupID"].isin(group_ids)]["typeName"])
+        return res
+
 
 class StaticDataExport(AbstractDataExport):
-    def __init__(self):
-        self.db = PATH / DB_NAME
-        if not (PATH / DB_NAME).exists():
+    def __init__(self, db_path=PATH / DB_NAME):
+        self.db_path = db_path
+        if not (self.db_path).exists():
             self.__download_db()
             self.__bunzip2()
-        self.conn = sqlite3.connect(str(self.db))
+        self.conn = sqlite3.connect(str(self.db_path))
         self.__cache_tables()
-
-    def __get_group_content_names(self, group_id):
-        return pd.read_sql_query(
-            "select * from invTypes where marketGroupID == {} ".format(
-                group_id
-            ),
-            self.conn,
-        )["typeName"]
-
-    def __get_class_contents(self, classname):
-        ids = CLASSES_GROUPS[classname]
-        res = []
-        for i in ids:
-            res.extend(list(self.__get_group_content_names(i)))
-        return res
 
     def __cache_tables(self):
         types_q = """select  * from  invTypes """
@@ -191,7 +168,13 @@ class StaticDataExport(AbstractDataExport):
 
             """
 
-        materials_q = """select * from industryActivityMaterials"""
+        materials_q = """
+            select *
+            from
+                industryActivityMaterials
+            where activityID in (1,11)
+            """
+
         marketgroups_q = """select * from invMarketGroups"""
 
         self._tables = {
@@ -202,8 +185,12 @@ class StaticDataExport(AbstractDataExport):
             "marketgroups": pd.read_sql_query(marketgroups_q, self.conn),
         }
         self.component_by_classes = {
-            key: self.__get_class_contents(key)
-            for key in CLASSES_GROUPS.keys()
+            class_group: self.get_class_contents(class_group)
+            for class_group in [
+                ProductionClass.ADVANCED_COMPONENT,
+                ProductionClass.BASIC_CAPITAL_COMPONENT,
+                ProductionClass.ADVANCED_CAPITAL_COMPONENT,
+            ]
         }
 
     def __download_db(self):
@@ -234,7 +221,7 @@ class StaticDataExport(AbstractDataExport):
 
     def __bunzip2(self):
         source_file = Path(PATH, OUTPUT_FILENAME)
-        dest_file = self.db
+        dest_file = self.db_path
         try:
             print("Decompressing file ... ", end="")
             with open(source_file, "rb") as bz2file:

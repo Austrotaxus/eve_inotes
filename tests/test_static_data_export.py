@@ -1,6 +1,8 @@
 import pandas as pd
 import pytest
+
 from fetchlib.static_data_export import AbstractDataExport, sde
+from fetchlib.utils import ProductionClass
 
 types_columns = ["typeID", "groupID", "typeName", "marketGroupID"]
 product_columns = ["typeID", "activityID", "productTypeID", "quantity"]
@@ -127,9 +129,7 @@ def test_sde_has_columns(data_export):
 
     assert not set(activities_columns) - set(data_export.activities.columns)
 
-    assert not set(market_group_columns) - set(
-        data_export.market_groups.columns
-    )
+    assert not set(market_group_columns) - set(data_export.market_groups.columns)
     assert not set(product_columns) - set(data_export.products.columns)
 
 
@@ -137,3 +137,49 @@ def test_sde_has_columns(data_export):
 def test_product_results_are_unique(data_export):
     """Important requirement needed for Decompositor to work correctly"""
     assert data_export.products["productTypeID"].is_unique
+
+
+@pytest.mark.parametrize("data_export", [fde, sde])
+def test_preapare_init_talbe(data_export):
+    table = data_export.create_init_table(Tengu=20)
+    assert list(table.columns) == [
+        "typeName",
+        "quantity",
+        "runs_required",
+        "activityID",
+        "typeID",
+    ]
+    assert table.shape[0] == 1
+
+
+@pytest.mark.parametrize("data_export", [fde, sde])
+def test_only_reaction_and_production(data_export):
+    assert set(data_export.materials["activityID"].unique()) == set([1, 11])
+    assert set(data_export.products["activityID"].unique()) == set([1, 11])
+    assert set(data_export.activities["activityID"].unique()) == set([1, 11])
+
+
+@pytest.mark.parametrize("data_export", [fde, sde])
+def test_append_everything(data_export):
+    """
+    Chech if we get correct amount of records on expansion
+    """
+
+    table = data_export.create_init_table(Tengu=20)
+    appended = data_export.append_everything(table)
+    tengu_blueprint_id = data_export.types[
+        data_export.types["typeName"] == "Tengu Blueprint"
+    ]["typeID"].iloc[0]
+
+    materials = data_export.materials
+
+    assert (
+        appended.shape[0]
+        == materials[materials["typeID"] == tengu_blueprint_id].shape[0]
+    )
+
+
+@pytest.mark.parametrize("data_export", [fde, sde])
+def test_get_class_contents(data_export):
+    components = data_export.get_class_contents(ProductionClass.ADVANCED_COMPONENT)
+    assert "Superconducting Gravimetric Amplifier" in components

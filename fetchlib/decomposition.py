@@ -9,9 +9,7 @@ class Decomposition:
         self.atomic, next_step = decompositor(step=step)
 
         if not self._finalize_condition(next_step):
-            self.child = Decomposition(
-                step=next_step, decompositor=decompositor
-            )
+            self.child = Decomposition(step=next_step, decompositor=decompositor)
         else:
             self.child = None
 
@@ -52,9 +50,7 @@ class Decomposition:
 
     @classmethod
     def empty_atomic(cls):
-        dataframe = pd.DataFrame(
-            [], columns=["typeID", "quantity", "typeName"]
-        )
+        dataframe = pd.DataFrame([], columns=["typeID", "quantity", "typeName"])
         return dataframe
 
     def __repr__(self):

@@ -1,11 +1,2 @@
-[tool.black]
-line-length = 79
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.git
-  | \.mypy_cache
-  | \.venv
-  | _build
-)/
-'''
+[tool.isort]
+profile = "black"

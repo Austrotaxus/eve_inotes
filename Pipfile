@@ -12,6 +12,7 @@ numpy = "==1.23"
 
 [dev-packages]
 pytest = "*"
+pre-commit = "*"
 
 [requires]
 python_version = "3.9"

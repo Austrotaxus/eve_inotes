@@ -13,7 +13,7 @@ class Decompositor:
         types = self.sde.types
 
         cleared = step[["typeID", "quantity"]]
-        base_collection = self.setup.collection.to_dataframe(
+        base_collection = self.setup.collection.effective_dataframe(
             self.setup.material_efficiency_impact(),
             self.setup.time_efficiency_impact(),
         )
@@ -24,9 +24,9 @@ class Decompositor:
         # Add info to table to understand what we would need pn the next steps
         appended = self.sde.append_everything(merged)
 
-        to_remove = types[
-            types["typeName"].isin(self.setup.non_productables())
-        ]["typeID"]
+        to_remove = types[types["typeName"].isin(self.setup.non_productables())][
+            "typeID"
+        ]
         filtered = appended[~appended.isin(to_remove)]
 
         table = filtered
@@ -39,15 +39,11 @@ class Decompositor:
             .rename({"index": "typeID"}, axis="columns")
         )
         atomic = quantity_table[
-            ~quantity_table["typeID"].isin(
-                self.sde.productables["productTypeID"]
-            )
+            ~quantity_table["typeID"].isin(self.sde.products["productTypeID"])
             | quantity_table["typeID"].isin(to_remove)
         ]
         new_step = quantity_table[
-            quantity_table["typeID"].isin(
-                self.sde.productables["productTypeID"]
-            )
+            quantity_table["typeID"].isin(self.sde.products["productTypeID"])
             & ~quantity_table["typeID"].isin(to_remove)
         ]
 
@@ -70,11 +66,7 @@ class Decompositor:
             # For production
             if x.activityID == 1:
                 single_line_run_price = int(
-                    np.ceil(
-                        x.quantity_materials
-                        * single_line_run_size
-                        * x.me_impact
-                    )
+                    np.ceil(x.quantity_materials * single_line_run_size * x.me_impact)
                 )
                 single_line_run_price = np.maximum(
                     single_line_run_price, single_line_run_size
@@ -82,9 +74,7 @@ class Decompositor:
 
                 trim_size = (
                     x.quantity
-                    - single_line_run_size
-                    * paralel_jobs_required
-                    * x.quantity_product
+                    - single_line_run_size * paralel_jobs_required * x.quantity_product
                 )
                 trim_price = int(
                     np.ceil(
@@ -96,9 +86,7 @@ class Decompositor:
                 )
                 trim_price = np.maximum(trim_price, trim_size)
 
-                run_price = (
-                    single_line_run_price * paralel_jobs_required
-                ) + trim_price
+                run_price = (single_line_run_price * paralel_jobs_required) + trim_price
 
             # For reaction
             elif x.activityID == 11:
@@ -113,9 +101,7 @@ class Decompositor:
             jobs_required = (np.ceil(x.quantity / run_size)).astype("int32")
             # count for production
             if x.activityID == 1:
-                r_req = int(
-                    np.ceil(jobs_required * run_size / x.quantity_product)
-                )
+                r_req = int(np.ceil(jobs_required * run_size / x.quantity_product))
             # count for reaction
             elif x.activityID == 11:
                 r_req = int(np.ceil((x.quantity / x.quantity_product)))
