@@ -13,7 +13,7 @@ class Decompositor:
         types = self.sde.types
 
         cleared = step[["typeID", "quantity"]]
-        base_collection = self.setup.collection.to_dataframe(
+        base_collection = self.setup.collection.effective_dataframe(
             self.setup.material_efficiency_impact(),
             self.setup.time_efficiency_impact(),
         )

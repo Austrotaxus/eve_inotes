@@ -2,12 +2,19 @@ import os
 
 from PyInquirer import prompt
 
+
 from fetchlib import balancify_runs
 from fetchlib.decomposition import Decomposition
 from fetchlib.decompositor import Decompositor
 from fetchlib.setup import setup
 from fetchlib.static_data_export import sde
-from fetchlib.utils import CitadelTypes, ProductionClasses, Rigs, SpaceTypes
+from fetchlib.utils import (
+    CitadelType,
+    ProductionClass,
+    RigSet,
+    SpaceType,
+    AVALIABLE_RIGS,
+)
 
 
 class InqController:
@@ -101,7 +108,7 @@ class InqController:
 
     def set_space_type(self):
         current = self.setup.space_type
-        possible = SpaceTypes.to_dict().values()
+        possible = SpaceType.to_dict().values()
         activity_prompt = {
             "type": "list",
             "name": "space",
@@ -115,19 +122,18 @@ class InqController:
 
     def select_rigs(self):
         current = self.setup.rig_set
-        possible = Rigs.to_dict()
         activity_prompt = {
             "type": "checkbox",
             "name": "rigs",
             "message": "What would you like to do?"
             "Current type is: {}".format(current),
             "choices": [
-                {"name": name, "checked": value in current}
-                for name, value in possible.items()
+                {"value": rig, "name": repr(rig), "checked": rig in current}
+                for rig in AVALIABLE_RIGS
             ],
         }
         answer = prompt(activity_prompt)
-        self.setup.rig_set = [possible[a] for a in answer["rigs"]]
+        self.setup.rig_set = RigSet(answer["rigs"])
         return (activity_prompt, answer)
 
     def set_blueprint(self):
@@ -166,7 +172,7 @@ class InqController:
                 "message": "Product Type?",
                 "choices": [
                     {"name": name}
-                    for name in ProductionClasses.to_dict().values()
+                    for name in ProductionClass.to_dict().values()
                 ],
             },
         ]
@@ -176,7 +182,6 @@ class InqController:
             material_efficiency=float(answers["me"]),
             time_efficiency=float(answers["te"]),
             runs=int(answers["runs"]),
-            product_type=answers["p_type"],
         )
         return (questions, answers)
 

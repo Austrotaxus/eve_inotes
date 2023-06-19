@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-from fetchlib.utils import CLASSES_GROUPS, PATH
+from fetchlib.utils import CLASSES_GROUPS, PATH, ProductionClass, ReactionClass
 
 
 DB_NAME = "eve.db"
@@ -126,6 +126,19 @@ class AbstractDataExport(ABC):
         prety = self.pretify_step(with_types)
         return prety
 
+    def get_class_contents(self, production_class) -> pd.DataFrame:
+        """
+        Obtain all the typenames which belongs to production class from utils
+        """
+        group_ids = list(CLASSES_GROUPS[production_class].values())
+        return self.get_types_by_group_ids(*group_ids)
+
+    def get_types_by_group_ids(self, *group_ids):
+        res = list(
+            self.types[self.types["marketGroupID"].isin(group_ids)]["typeName"]
+        )
+        return res
+
 
 class StaticDataExport(AbstractDataExport):
     def __init__(self, db_path=PATH / DB_NAME):
@@ -135,21 +148,6 @@ class StaticDataExport(AbstractDataExport):
             self.__bunzip2()
         self.conn = sqlite3.connect(str(self.db_path))
         self.__cache_tables()
-
-    def __get_group_content_names(self, group_id):
-        return pd.read_sql_query(
-            "select * from invTypes where marketGroupID == {} ".format(
-                group_id
-            ),
-            self.conn,
-        )["typeName"]
-
-    def __get_class_contents(self, classname):
-        ids = CLASSES_GROUPS[classname]
-        res = []
-        for i in ids:
-            res.extend(list(self.__get_group_content_names(i)))
-        return res
 
     def __cache_tables(self):
         types_q = """select  * from  invTypes """
@@ -194,8 +192,12 @@ class StaticDataExport(AbstractDataExport):
             "marketgroups": pd.read_sql_query(marketgroups_q, self.conn),
         }
         self.component_by_classes = {
-            key: self.__get_class_contents(key)
-            for key in CLASSES_GROUPS.keys()
+            class_group: self.get_class_contents(class_group)
+            for class_group in [
+                ProductionClass.ADVANCED_COMPONENT,
+                ProductionClass.BASIC_CAPITAL_COMPONENT,
+                ProductionClass.ADVANCED_CAPITAL_COMPONENT,
+            ]
         }
 
     def __download_db(self):

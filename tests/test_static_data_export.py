@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
 from fetchlib.static_data_export import AbstractDataExport, sde
+from fetchlib.utils import ProductionClass
 
 types_columns = ["typeID", "groupID", "typeName", "marketGroupID"]
 product_columns = ["typeID", "activityID", "productTypeID", "quantity"]
@@ -177,3 +178,11 @@ def test_append_everything(data_export):
         appended.shape[0]
         == materials[materials["typeID"] == tengu_blueprint_id].shape[0]
     )
+
+
+@pytest.mark.parametrize("data_export", [fde, sde])
+def test_get_class_contents(data_export):
+    components = data_export.get_class_contents(
+        ProductionClass.ADVANCED_COMPONENT
+    )
+    assert "Superconducting Gravimetric Amplifier" in components
