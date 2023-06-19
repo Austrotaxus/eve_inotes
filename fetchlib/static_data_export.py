@@ -8,7 +8,6 @@ import requests
 
 from fetchlib.utils import CLASSES_GROUPS, PATH, ProductionClass, ReactionClass
 
-
 DB_NAME = "eve.db"
 OUTPUT_FILENAME = "eve.db.bz2file"
 URL = "https://www.fuzzwork.co.uk/dump/sqlite-latest.sqlite.bz2"
@@ -75,9 +74,7 @@ class AbstractDataExport(ABC):
         """
         Helper for fancyfing step
         """
-        step = self.append_products(table)[
-            ["typeID", "quantity", "activityID"]
-        ]
+        step = self.append_products(table)[["typeID", "quantity", "activityID"]]
 
         # Reseting typeID to coresponds item, not item's blueprint
         step["typeID"] = step.index
@@ -89,9 +86,7 @@ class AbstractDataExport(ABC):
         # Reseting typeID to coresponds item, not item's blueprint
         step["typeID"] = step.index
 
-        return step[
-            ["typeName", "quantity", "runs_required", "activityID", "typeID"]
-        ]
+        return step[["typeName", "quantity", "runs_required", "activityID", "typeID"]]
 
     def atomic_materials(self, atomic: pd.DataFrame) -> pd.DataFrame:
         """
@@ -104,9 +99,9 @@ class AbstractDataExport(ABC):
             .groupby("typeID")
             .sum()
         )
-        materials = materials.join(
-            types.set_index("typeID"), lsuffix="-atom_"
-        )[["typeName", "quantity"]].astype({"quantity": "int64"})
+        materials = materials.join(types.set_index("typeID"), lsuffix="-atom_")[
+            ["typeName", "quantity"]
+        ].astype({"quantity": "int64"})
         return materials.reset_index()
 
     def create_init_table(self, **kwargs) -> pd.DataFrame:
@@ -116,9 +111,9 @@ class AbstractDataExport(ABC):
         params:
         kwargs: Dict[str, int] - dictionary of items to produce with corresponding quantities
         """
-        init = pd.DataFrame(
-            kwargs.items(), columns=["typeName", "quantity"]
-        ).set_index("typeName")
+        init = pd.DataFrame(kwargs.items(), columns=["typeName", "quantity"]).set_index(
+            "typeName"
+        )
         types = self.types.set_index("typeName")
         with_types = init.join(types)[["typeID", "quantity"]]
         if diff := set(kwargs.keys()) - set(with_types.index):
@@ -134,9 +129,7 @@ class AbstractDataExport(ABC):
         return self.get_types_by_group_ids(*group_ids)
 
     def get_types_by_group_ids(self, *group_ids):
-        res = list(
-            self.types[self.types["marketGroupID"].isin(group_ids)]["typeName"]
-        )
+        res = list(self.types[self.types["marketGroupID"].isin(group_ids)]["typeName"])
         return res
 
 

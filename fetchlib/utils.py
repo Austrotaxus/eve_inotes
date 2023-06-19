@@ -285,9 +285,7 @@ class MediumSetIndustryRig(RigEffect):
         return 0 if self.rig_type == "ME" else 0
 
     def me_impact(self, space_type):
-        return (
-            ME_IMPACTS[self.tier][space_type] if self.rig_type == "ME" else 0
-        )
+        return ME_IMPACTS[self.tier][space_type] if self.rig_type == "ME" else 0
 
     def __repr__(self):
         return f"MSet t{self.tier} {self.production_class} {self.rig_type}"
@@ -302,24 +300,14 @@ class MediumSetIndustryRig(RigEffect):
 
 
 AVALIABLE_RIGS = (
-    MediumSetIndustryRig(
-        production_class=ProductionClass.BASIC_LARGE_SHIP, tier=1
-    ),
-    MediumSetIndustryRig(
-        production_class=ProductionClass.ADVANCED_LARGE_SHIP, tier=1
-    ),
+    MediumSetIndustryRig(production_class=ProductionClass.BASIC_LARGE_SHIP, tier=1),
+    MediumSetIndustryRig(production_class=ProductionClass.ADVANCED_LARGE_SHIP, tier=1),
     MediumSetIndustryRig(
         production_class=ProductionClass.STRUCTURE_OR_COMPONENT, tier=1
     ),
-    MediumSetIndustryRig(
-        production_class=ProductionClass.BASIC_MEDIUM_SHIP, tier=1
-    ),
-    MediumSetIndustryRig(
-        production_class=ProductionClass.ADVANCED_MEDIUM_SHIP, tier=1
-    ),
-    MediumSetIndustryRig(
-        production_class=ProductionClass.ADVANCED_COMPONENT, tier=1
-    ),
+    MediumSetIndustryRig(production_class=ProductionClass.BASIC_MEDIUM_SHIP, tier=1),
+    MediumSetIndustryRig(production_class=ProductionClass.ADVANCED_MEDIUM_SHIP, tier=1),
+    MediumSetIndustryRig(production_class=ProductionClass.ADVANCED_COMPONENT, tier=1),
 )
 
 

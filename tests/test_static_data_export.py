@@ -1,5 +1,6 @@
 import pandas as pd
 import pytest
+
 from fetchlib.static_data_export import AbstractDataExport, sde
 from fetchlib.utils import ProductionClass
 
@@ -128,9 +129,7 @@ def test_sde_has_columns(data_export):
 
     assert not set(activities_columns) - set(data_export.activities.columns)
 
-    assert not set(market_group_columns) - set(
-        data_export.market_groups.columns
-    )
+    assert not set(market_group_columns) - set(data_export.market_groups.columns)
     assert not set(product_columns) - set(data_export.products.columns)
 
 
@@ -182,7 +181,5 @@ def test_append_everything(data_export):
 
 @pytest.mark.parametrize("data_export", [fde, sde])
 def test_get_class_contents(data_export):
-    components = data_export.get_class_contents(
-        ProductionClass.ADVANCED_COMPONENT
-    )
+    components = data_export.get_class_contents(ProductionClass.ADVANCED_COMPONENT)
     assert "Superconducting Gravimetric Amplifier" in components

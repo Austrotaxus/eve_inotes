@@ -3,15 +3,14 @@ from typing import Iterable
 
 from fetchlib.static_data_export import sde
 from fetchlib.utils import (
+    PATH,
     Blueprint,
     BlueprintCollection,
     CitadelType,
-    PATH,
     ProductionClass,
     RigSet,
     SpaceType,
 )
-
 
 DEFAULT_NON_PRODUCTABLES = {
     "Nitrogen Fuel Block",
@@ -55,9 +54,7 @@ class Setup:
         return self._non_productables
 
     def material_efficiency_impact(self):
-        citadel_impact = 1 - (
-            (self.citadel_type in (CitadelType.RAITARU,)) * 0.01
-        )
+        citadel_impact = 1 - ((self.citadel_type in (CitadelType.RAITARU,)) * 0.01)
 
         impact_dict = {}
         rig_impact_dict = self.rig_set.represent_me(self.space_type)

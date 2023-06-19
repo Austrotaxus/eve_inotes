@@ -2,18 +2,17 @@ import os
 
 from PyInquirer import prompt
 
-
 from fetchlib import balancify_runs
 from fetchlib.decomposition import Decomposition
 from fetchlib.decompositor import Decompositor
 from fetchlib.setup import setup
 from fetchlib.static_data_export import sde
 from fetchlib.utils import (
+    AVALIABLE_RIGS,
     CitadelType,
     ProductionClass,
     RigSet,
     SpaceType,
-    AVALIABLE_RIGS,
 )
 
 
@@ -171,8 +170,7 @@ class InqController:
                 "name": "p_type",
                 "message": "Product Type?",
                 "choices": [
-                    {"name": name}
-                    for name in ProductionClass.to_dict().values()
+                    {"name": name} for name in ProductionClass.to_dict().values()
                 ],
             },
         ]
