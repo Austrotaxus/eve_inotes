@@ -191,7 +191,7 @@ class InqController:
         }
         answer = prompt(question)
         no_bpc_msg = "No such BPC in collection!"
-        print(self.setup.collection.prints.get(answer["bpc_name"], no_bpc_msg))
+        print(self.setup.collection.get(answer["bpc_name"], no_bpc_msg))
         return (question, answer)
 
     def evaluate_production_schema(self):

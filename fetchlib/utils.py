@@ -60,58 +60,6 @@ class SpaceType(BaseCollectionMixin):
     NULL_WH = "null_wh"
 
 
-@dataclass
-class Blueprint:
-    name: str
-    material_efficiency: float
-    time_efficiency: float
-    runs: int = field(default=2**20)
-
-
-class BlueprintCollection:
-    def __init__(self, prints: Iterable[Blueprint]):
-        self.prints = {blueprint.name: blueprint for blueprint in prints}
-
-    def __repr__(self):
-        return str(list(self.prints.values()))
-
-    def add(self, prints: Iterable[Blueprint]):
-        for blueprints in prints:
-            self.prints[blueprints.name] = blueprints
-
-    def add_blueptint(self, **kwargs):
-        self.prints[kwargs["name"]] = Blueprint(**kwargs)
-
-    # return dataframe with respects to efficiency
-    def effective_dataframe(self, material_impact={}, time_impact={}):
-        """
-        Calculates effective time and material efficiency
-        params:
-        material_impact - dict of material impacts provided by setup (rigs+citadels)
-        time_impact - dict of time impacts provided by setup (rigs+citadels)
-        """
-        blueprints = self.prints.values()
-        names = (blueprint.name for blueprint in blueprints)
-        material_efficiencies = (
-            (1 - blueprint.material_efficiency)
-            * material_impact.get(blueprint.name, 1.0)
-            for blueprint in blueprints
-        )
-        time_efficiencies = (
-            (1 - p.time_efficiency) * time_impact.get(p.product_type, 1.0)
-            for p in blueprints
-        )
-        runs = (blueprint.runs for blueprint in blueprints)
-        return pd.DataFrame(
-            data={
-                "productName": names,
-                "me_impact": material_efficiencies,
-                "te_impact": time_efficiencies,
-                "run": runs,
-            }
-        )
-
-
 """
 Impact of rig ingame is unclear and non-documented.
 I didn't manage to find any data, so I've try to reproduce it

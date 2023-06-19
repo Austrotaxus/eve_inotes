@@ -1,16 +1,9 @@
 import pickle
 from typing import Iterable
 
+from fetchlib.blueprint import Blueprint, BlueprintCollection
 from fetchlib.static_data_export import sde
-from fetchlib.utils import (
-    PATH,
-    Blueprint,
-    BlueprintCollection,
-    CitadelType,
-    ProductionClass,
-    RigSet,
-    SpaceType,
-)
+from fetchlib.utils import PATH, CitadelType, ProductionClass, RigSet, SpaceType
 
 DEFAULT_NON_PRODUCTABLES = {
     "Nitrogen Fuel Block",
@@ -48,7 +41,7 @@ class Setup:
         d = sde.component_by_classes
         for product_type, lst in d.items():
             for name in lst:
-                yield Blueprint(name, 0.1, 0.2, product_type=product_type)
+                yield Blueprint(name, 0.1, 0.2)
 
     def non_productables(self):
         return self._non_productables
@@ -72,17 +65,10 @@ class Setup:
     def time_efficiency_impact(self):
         return {}
 
-    def add_blueprints_to_collection(self, prints: Iterable[Blueprint]):
-        names = [p.name for p in prints]
-        diff = set(names) - set(sde.types["typeName"])
-        if diff:
-            raise ValueError("Unknow typenames:{}".format(diff))
-        self.collection.add(prints)
-
     def add_blueprint_to_collection(self, name, **kwargs):
         if not sde.types["typeName"].str.contains(name).any():
             raise ValueError(f"Unknown typename: {name}")
-        self.collection.add_blueptint(name=name, **kwargs)
+        self.collection.add(Blueprint(name=name, **kwargs))
 
     def save_setup(self):
         with open(self.path, "wb") as f:
