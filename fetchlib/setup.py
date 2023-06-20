@@ -2,8 +2,9 @@ import pickle
 from typing import Iterable
 
 from fetchlib.blueprint import Blueprint, BlueprintCollection
+from fetchlib.rig import RigSet
 from fetchlib.static_data_export import sde
-from fetchlib.utils import PATH, CitadelType, ProductionClass, RigSet, SpaceType
+from fetchlib.utils import PATH, CitadelType, ProductionClass, SpaceType
 
 DEFAULT_NON_PRODUCTABLES = {
     "Nitrogen Fuel Block",

@@ -1,11 +1,8 @@
 import os
 from abc import abstractproperty
 from collections import defaultdict
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, List
-
-import pandas as pd
+from typing import List
 
 PATH = (
     Path(os.path.expanduser("~")) / ".eve_db"
@@ -136,12 +133,21 @@ CLASSES_GROUPS = {
         "amarr_logistics": 438,
         "amarr_recon": 827,
         "amarr_strategic": 1139,
+        "amarr_sub_core": 1122,
+        "amarr_sub_defensive": 1126,
+        "amarr_sub_offensive": 1130,
+        "amarr_sub_propulsion": 1134,
         "caldari_command": 828,
         "caldari_heavy_assault_cruisers": 450,
         "caldari_heavy_interdictors": 1072,
         "caldari_logistics": 439,
         "caldari_recon": 830,
         "caldari_strategic": 1140,
+        "caldari_sub_core": 1123,
+        "caldari_sub_defensive": 1127,
+        "caldari_sub_offensive": 1131,
+        "caldari_sub_propulsion": 1135,
+        "exhumers": 874,
         "flag_cruisers": 2417,
         "gallente_command": 831,
         "gallente_heavy_assault_cruisers": 451,
@@ -149,12 +155,20 @@ CLASSES_GROUPS = {
         "gallente_logistics": 440,
         "gallente_recon": 833,
         "gallente_strategic": 1141,
+        "gallente_sub_core": 1124,
+        "gallente_sub_defensive": 1129,
+        "gallente_sub_offensive": 1132,
+        "gallente_sub_propulsion": 1136,
         "minmatar_command": 834,
         "minmatar_heavy_assault_cruisers": 452,
         "minmatar_heavy_interdictors": 1074,
         "minmatar_logistics": 441,
         "minmatar_recon": 836,
         "minmatar_strategic": 1142,
+        "minmatar_sub_core": 1125,
+        "minmatar_sub_defensive": 1128,
+        "minmatar_sub_offensive": 1133,
+        "minmatar_sub_propulsion": 1137,
         "triglavian_heavy_assault_cruisers": 2535,
         "triglavian_logistics": 2526,
     },
@@ -170,122 +184,3 @@ CLASSES_GROUPS = {
         "hybrid_reaction": 1860,
     },
 }
-
-
-DEFAULT_T1_ME_IMPACT = {
-    SpaceType.HIGHSEC: 0.02 * 1,
-    SpaceType.LOWSEC: 0.02 * 1.9,
-    SpaceType.NULL_WH: 0.02 * 2.1,
-}
-
-DEFAULT_T2_ME_IMPACT = {
-    SpaceType.HIGHSEC: 0.024,
-    SpaceType.LOWSEC: 0.024 * 1.9,
-    SpaceType.NULL_WH: 0.024 * 2.1,
-}
-
-ME_IMPACTS = {1: DEFAULT_T1_ME_IMPACT, 2: DEFAULT_T2_ME_IMPACT}
-
-
-class RigEffect:
-    def __init__(self, tiel=1):
-        self.tier = tier
-
-    @abstractproperty
-    def affects(self):
-        ...
-
-    def me_impact(self, space_type):
-        ...
-
-    def te_impact(self, space_type):
-        ...
-
-    def represent_te(self, space_type):
-        res = {
-            production_class: self.te_impact(space_type)
-            for production_class in self.affects
-        }
-        return res
-
-    def represent_me(self, space_type):
-        res = {
-            production_class: self.me_impact(space_type)
-            for production_class in self.affects
-        }
-        return res
-
-
-class MediumSetIndustryRig(RigEffect):
-    def __init__(self, production_class, tier: int, rig_type: str = "ME"):
-        assert rig_type in ("ME", "TE")
-        assert tier in (1, 2)
-
-        self.production_class = production_class
-        self.tier = tier
-        self.rig_type = rig_type
-
-    @property
-    def affects(self):
-        return [self.production_class]
-
-    def te_impact(self, space_type):
-        return 0 if self.rig_type == "ME" else 0
-
-    def me_impact(self, space_type):
-        return ME_IMPACTS[self.tier][space_type] if self.rig_type == "ME" else 0
-
-    def __repr__(self):
-        return f"MSet t{self.tier} {self.production_class} {self.rig_type}"
-
-    def __eq__(self, o):
-        return (
-            type(self) == type(o)
-            and self.production_class == o.production_class
-            and self.tier == o.tier
-            and self.rig_type == o.rig_type
-        )
-
-
-AVALIABLE_RIGS = (
-    MediumSetIndustryRig(production_class=ProductionClass.BASIC_LARGE_SHIP, tier=1),
-    MediumSetIndustryRig(production_class=ProductionClass.ADVANCED_LARGE_SHIP, tier=1),
-    MediumSetIndustryRig(
-        production_class=ProductionClass.STRUCTURE_OR_COMPONENT, tier=1
-    ),
-    MediumSetIndustryRig(production_class=ProductionClass.BASIC_MEDIUM_SHIP, tier=1),
-    MediumSetIndustryRig(production_class=ProductionClass.ADVANCED_MEDIUM_SHIP, tier=1),
-    MediumSetIndustryRig(production_class=ProductionClass.ADVANCED_COMPONENT, tier=1),
-)
-
-
-class RigSet(BaseCollectionMixin):
-    def __init__(self, rig_effects: List[RigEffect] = None):
-        self.rig_effects = rig_effects or []
-
-    def represent_me(self, space_type):
-        res = defaultdict(lambda: 0)
-        for rig_effect in self.rig_effects:
-            for production_class, modifier in rig_effect.represent_me(
-                space_type
-            ).items():
-                res[production_class] = max(res[production_class], modifier)
-
-        return res
-
-    def represent_te(self, space_type):
-        res = defaultdict(lambda: 0)
-        for rig_effect in self.rig_effects:
-            for group_id, modifier in rig_effect.represent_te(space_type):
-                res[group_id] = max(res[group_id], modifier)
-
-        return res
-
-    def append(self, rig_effect):
-        self.rig_effect.append(rig_effect)
-
-    def __contains__(self, rig_effect):
-        return rig_effect in self.rig_effects
-
-    def __iter__(self):
-        return iter(self.rig_effects)

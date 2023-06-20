@@ -5,15 +5,10 @@ from PyInquirer import prompt
 from fetchlib import balancify_runs
 from fetchlib.decomposition import Decomposition
 from fetchlib.decompositor import Decompositor
+from fetchlib.rig import AVALIABLE_RIGS, RigSet
 from fetchlib.setup import setup
 from fetchlib.static_data_export import sde
-from fetchlib.utils import (
-    AVALIABLE_RIGS,
-    CitadelType,
-    ProductionClass,
-    RigSet,
-    SpaceType,
-)
+from fetchlib.utils import CitadelType, ProductionClass, SpaceType
 
 
 class InqController:
