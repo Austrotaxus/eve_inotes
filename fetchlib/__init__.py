@@ -31,7 +31,6 @@ def balancify_runs(decomposition: "Decomposition", setup) -> str:
             lines_load[key] = line_load
         return lines_load
 
-    result = []
     result = ["Balancing runs"]
     for i, table in enumerate(decomposition.steps, start=1):
         result.append(f"Balancing runs for step {i}:")

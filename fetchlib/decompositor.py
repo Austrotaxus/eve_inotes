@@ -13,11 +13,10 @@ class Decompositor:
         types = self.sde.types
 
         cleared = step[["typeID", "quantity"]]
-        base_collection = self.setup.collection.effective_dataframe(
-            self.setup.material_efficiency_impact(),
-            self.setup.time_efficiency_impact(),
-        )
-        collection = self.sde.enrich_collection(base_collection)
+        base_collection = self.setup.efficiency_impact
+
+        # FIXME enginiering complex effect is not counted
+        collection = self.sde.append_type_id(base_collection)
         merged = cleared.merge(collection, on="typeID", how="left").fillna(
             value={"me_impact": 1.0, "te_impact": 1.0, "run": 2**10}
         )
@@ -32,7 +31,7 @@ class Decompositor:
         table = filtered
         table["quantity"], table["runs_required"] = self.count_required(table)
 
-        summed = table.groupby(table.index).sum()
+        summed = table.groupby(table.index).sum(numeric_only=True)
         quantity_table = (
             summed[["quantity"]]
             .reset_index()

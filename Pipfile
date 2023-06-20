@@ -5,7 +5,7 @@ name = "pypi"
 
 [packages]
 requests = "*"
-pandas = "==1.0.5"
+pandas = "==1.5"
 pyinquirer = "==1.0.3"
 pysqlite3 = "*"
 numpy = "==1.23"
