@@ -37,6 +37,23 @@ class BlueprintCollection:
     def __iter__(self):
         return iter(self._prints.values())
 
+    @property
+    def to_dataframe(self):
+        names = (blueprint.name for blueprint in self)
+        material_efficiencies = (
+            (1 - blueprint.material_efficiency) for blueprint in self
+        )
+        time_efficiencies = ((1 - blueprint.time_efficiency) for blueprint in self)
+        runs = (blueprint.runs for blueprint in self)
+        return pd.DataFrame(
+            data={
+                "me_impact": material_efficiencies,
+                "te_impact": time_efficiencies,
+                "run": runs,
+            },
+            index=names,
+        )
+
     # FIXME should be moved to setup
     def effective_dataframe(self, material_impact={}, time_impact={}):
         """

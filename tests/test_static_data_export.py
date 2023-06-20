@@ -164,7 +164,6 @@ def test_append_everything(data_export):
     """
     Chech if we get correct amount of records on expansion
     """
-
     table = data_export.create_init_table(Tengu=20)
     appended = data_export.append_everything(table)
     tengu_blueprint_id = data_export.types[
