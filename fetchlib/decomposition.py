@@ -25,7 +25,7 @@ class Decomposition:
         if self.is_final:
             return self.atomic
         else:
-            return self.atomic.append(self.child._required_materials())
+            return pd.concat([self.atomic, self.child._required_materials()])
 
     def __iter__(self):
         def gen_helper():

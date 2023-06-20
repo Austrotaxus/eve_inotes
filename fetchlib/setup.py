@@ -1,6 +1,8 @@
 import pickle
 from typing import Iterable
 
+import pandas as pd
+
 from fetchlib.blueprint import Blueprint, BlueprintCollection
 from fetchlib.rig import RigSet
 from fetchlib.static_data_export import sde
@@ -27,20 +29,14 @@ class Setup:
         self.space_type = SpaceType.NULL_WH
         self.rig_set = RigSet()
         self.skills = None
-        self.collection = BlueprintCollection(self.initial_collection())
         self.reaction_lines = 20
         self.production_lines = 20
         self._non_productables = non_productables
-
-    @classmethod
-    def default_impact(cls):
-        members = ProductionClass.to_dict().values()
-        res = {m: 1.0 for m in members}
-        return res
+        self.collection = BlueprintCollection(self.initial_collection())
 
     def initial_collection(self):
-        d = sde.component_by_classes
-        for product_type, lst in d.items():
+        data = sde.component_by_classes
+        for product_type, lst in data.items():
             for name in lst:
                 yield Blueprint(name, 0.1, 0.2)
 
@@ -85,6 +81,17 @@ class Setup:
     def set_lines_amount(self, reaction: int, production: int):
         self.reaction_lines = reaction
         self.production_lines = production
+
+    @property
+    def efficiency_impact(self) -> pd.DataFrame:
+        rig_df = self.rig_set.to_dataframe(self.space_type, sde)
+        bp_df = self.collection.to_dataframe
+
+        res = rig_df.join(bp_df, how="outer", rsuffix="_x", lsuffix="_y").fillna(1)
+        res["te_impact"] = res["te_impact_x"] * res["te_impact_y"]
+        res["me_impact"] = res["me_impact_x"] * res["me_impact_y"]
+
+        return res[["te_impact", "me_impact", "run"]]
 
 
 setup = Setup.load_setup() or Setup()

@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-from fetchlib.utils import CLASSES_GROUPS, PATH, ProductionClass, ReactionClass
+from fetchlib.utils import CLASSES_GROUPS, PATH, ProductionClass
 
 DB_NAME = "eve.db"
 OUTPUT_FILENAME = "eve.db.bz2file"
@@ -34,13 +34,11 @@ class AbstractDataExport(ABC):
     def market_groups(self):
         raise NotImplementedError
 
-    def enrich_collection(self, collection: pd.DataFrame) -> pd.DataFrame:
-        result = collection.merge(
-            self.types,
-            left_on="productName",
-            right_on="typeName",
-        )[["typeName", "typeID", "run", "me_impact", "te_impact"]]
-        return result
+    def append_type_id(self, collection: pd.DataFrame) -> pd.DataFrame:
+        result = collection.join(
+            self.types.set_index("typeName"),
+        )[["typeID", "run", "me_impact", "te_impact"]]
+        return result.reset_index(names="typeName")
 
     def append_products(self, step: pd.DataFrame) -> pd.DataFrame:
         result = step.set_index("typeID").join(
