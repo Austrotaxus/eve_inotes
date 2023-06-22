@@ -1,5 +1,5 @@
 import pickle
-from typing import Iterable
+from typing import Iterable, Set
 
 import pandas as pd
 
@@ -17,6 +17,9 @@ DEFAULT_NON_PRODUCTABLES = {
 
 
 class Setup:
+    """Represents industry cluster used for production."""
+
+    # FIXME probably should apply 'builder' pattern
     def __init__(
         self,
         path=PATH / "main_setup.pkl",
@@ -40,29 +43,29 @@ class Setup:
             for name in lst:
                 yield Blueprint(name, 0.1, 0.2)
 
-    def non_productables(self):
+    @property
+    def non_productables(self) -> Set[str]:
+        """
+        Returns:
+            Set of typeNames unwanted for production.
+        """
         return self._non_productables
 
-    def material_efficiency_impact(self):
-        citadel_impact = 1 - ((self.citadel_type in (CitadelType.RAITARU,)) * 0.01)
-
-        impact_dict = {}
-        rig_impact_dict = self.rig_set.represent_me(self.space_type)
-        for production_class, rig_impact in rig_impact_dict.items():
-            for product_type in sde.get_class_contents(
-                production_class=production_class
-            ):
-                impact_dict[product_type] = 1.0 - rig_impact
-
-        for key in impact_dict.keys():
-            impact_dict[key] *= citadel_impact
-
-        return impact_dict
-
-    def time_efficiency_impact(self):
-        return {}
-
-    def add_blueprint_to_collection(self, name, **kwargs):
+    def add_blueprint_to_collection(
+        self,
+        *,
+        name: str,
+        material_efficiency: float,
+        time_efficiency: float,
+        runs: int,
+    ):
+        """Add blueprint to inner blueprint collection.
+        Args:
+            name - produced typeName
+            material_efficiency - me in [0.0, 0.1]
+            time_efficiency - te in [0.0, 0.2]
+            runs - max runs of blueprint
+        """
         if not sde.types["typeName"].str.contains(name).any():
             raise ValueError(f"Unknown typename: {name}")
         self.collection.add(Blueprint(name=name, **kwargs))
@@ -84,6 +87,14 @@ class Setup:
 
     @property
     def efficiency_impact(self) -> pd.DataFrame:
+        """
+        Returns:
+            pandas DataFrame indexed by typeName containing info
+            about combined blueprint and rig impact. For example:
+            -----------------------------------------------------
+                    te_impact me_impact runs
+            Raven        0.85      0.56  10
+        """
         rig_df = self.rig_set.to_dataframe(self.space_type, sde)
         bp_df = self.collection.to_dataframe
 

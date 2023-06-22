@@ -4,10 +4,20 @@ import pandas as pd
 
 
 class Decomposition:
+    """Decomposition is a recursive object which contain steps(what to produce)
+    atomic(elementary materials required for this step) and Decomposition object
+    for non-atomic(productable) items required for this step
+    """
+
     def __init__(self, *, step, decompositor):
+        """
+        Args:
+            step - dataframe we want to decompose
+            decompositor - strategy of decomposition
+        """
+
         self.step = step
         self.atomic, next_step = decompositor(step=step)
-
         if not self._finalize_condition(next_step):
             self.child = Decomposition(step=next_step, decompositor=decompositor)
         else:
@@ -39,11 +49,21 @@ class Decomposition:
 
     @property
     def required_materials(self):
+        """
+        Returns:
+            Dataframe of elementary materials required for production
+            defined by Decomposition.
+        """
         table = self._required_materials()
         return table.groupby(["typeName"])["quantity"].sum()
 
     @property
     def steps(self) -> List[pd.DataFrame]:
+        """
+        Returns:
+            List of dataframes with production instructions to implement production
+            defined by Decomposition.
+        """
         if not self.is_final:
             return self.child.steps + [self.step]
         return [self.step]

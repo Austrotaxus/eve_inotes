@@ -5,27 +5,32 @@ import pandas as pd
 
 
 class Decompositor:
-    def __init__(self, sde, setup):
-        self.sde = sde
+    """Callable detemines the strategy of decomposition.
+
+    Used in pair with Decomposition
+    """
+
+    def __init__(self, data_export, setup):
+        self.data_export = data_export
         self.setup = setup
 
     def __call__(self, step: pd.DataFrame):
-        types = self.sde.types
+        types = self.data_export.types
 
         cleared = step[["typeID", "quantity"]]
         base_collection = self.setup.efficiency_impact
 
         # FIXME enginiering complex effect is not counted
-        collection = self.sde.append_type_id(base_collection)
+        collection = self.data_export.append_type_id(base_collection)
         merged = cleared.merge(collection, on="typeID", how="left").fillna(
             value={"me_impact": 1.0, "te_impact": 1.0, "run": 2**10}
         )
-        # Add info to table to understand what we would need pn the next steps
-        appended = self.sde.append_everything(merged)
 
-        to_remove = types[types["typeName"].isin(self.setup.non_productables())][
-            "typeID"
-        ]
+        # Add info to table to understand what we would need pn the next steps
+
+        appended = self.data_export.append_everything(merged)
+
+        to_remove = types[types["typeName"].isin(self.setup.non_productables)]["typeID"]
         filtered = appended[~appended.isin(to_remove)]
 
         table = filtered
@@ -38,17 +43,17 @@ class Decompositor:
             .rename({"index": "typeID"}, axis="columns")
         )
         atomic = quantity_table[
-            ~quantity_table["typeID"].isin(self.sde.products["productTypeID"])
+            ~quantity_table["typeID"].isin(self.data_export.products["productTypeID"])
             | quantity_table["typeID"].isin(to_remove)
         ]
         new_step = quantity_table[
-            quantity_table["typeID"].isin(self.sde.products["productTypeID"])
+            quantity_table["typeID"].isin(self.data_export.products["productTypeID"])
             & ~quantity_table["typeID"].isin(to_remove)
         ]
 
         return (
-            self.sde.atomic_materials(atomic),
-            self.sde.pretify_step(new_step),
+            self.data_export.atomic_materials(atomic),
+            self.data_export.pretify_step(new_step),
         )
 
     @classmethod
