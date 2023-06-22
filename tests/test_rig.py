@@ -32,7 +32,7 @@ def test_to_dataframe():
     )
     rig_set = RigSet([me, te])
 
-    df = rig_set.to_dataframe(space_type=SpaceType.NULL_WH, sde=fde)
+    df = rig_set.to_dataframe(space_type=SpaceType.NULL_WH, data_export=fde)
     expected = pd.DataFrame(
         data={"te_impact": [1.00, 0.58], "me_impact": [0.958, 1.00]},
         index=["Superconducting Gravimetric Amplifier", "Tengu"],
