@@ -13,6 +13,11 @@ class Blueprint:
 
 
 class BlueprintCollection:
+    """Represents collection of blueprints.
+
+    All names of blueprint in collection are unique.
+    """
+
     def __init__(self, prints: Iterable[Blueprint]):
         self._prints = {}
         for blueprint in prints:
@@ -22,6 +27,11 @@ class BlueprintCollection:
         return f"BlueprintCollection( {self.prints} )"
 
     def add(self, *prints):
+        """Add blueprint list to the _prints.
+
+        Args:
+            prints - list of blueprints
+        """
         for blueprint in prints:
             self._prints[blueprint.name] = blueprint
 
@@ -39,6 +49,17 @@ class BlueprintCollection:
 
     @property
     def to_dataframe(self):
+        """
+        Returns:
+
+            A dataframe contains information about blueprint collection indexed by 'typeName'
+            For example:
+                    te_impact me_impact  run
+            Raven         0.8       0.9   10
+
+            te_impact is in [0.8, 1.0]
+            me_impact is in [0.9, 1.0]
+        """
         names = (blueprint.name for blueprint in self)
         material_efficiencies = (
             (1 - blueprint.material_efficiency) for blueprint in self
@@ -52,32 +73,4 @@ class BlueprintCollection:
                 "run": runs,
             },
             index=names,
-        )
-
-    # FIXME should be moved to setup
-    def effective_dataframe(self, material_impact={}, time_impact={}):
-        """
-        Calculates effective time and material efficiency
-        params:
-        material_impact - dict of material impacts provided by setup (rigs+citadels)
-        time_impact - dict of time impacts provided by setup (rigs+citadels)
-        """
-        names = (blueprint.name for blueprint in self)
-        material_efficiencies = (
-            (1 - blueprint.material_efficiency)
-            * material_impact.get(blueprint.name, 1.0)
-            for blueprint in self
-        )
-        time_efficiencies = (
-            (1 - blueprint.time_efficiency) * time_impact.get(blueprint.name, 1.0)
-            for blueprint in self
-        )
-        runs = (blueprint.runs for blueprint in self)
-        return pd.DataFrame(
-            data={
-                "productName": names,
-                "me_impact": material_efficiencies,
-                "te_impact": time_efficiencies,
-                "run": runs,
-            }
         )

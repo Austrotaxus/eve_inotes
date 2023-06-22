@@ -1,6 +1,6 @@
 from abc import ABC, abstractproperty
 from collections import defaultdict
-from typing import List
+from typing import Dict, List
 
 import pandas as pd
 
@@ -39,16 +39,18 @@ class RigEffect(ABC):
         self.tier = tier
 
     @abstractproperty
-    def affects(self):
+    def affects(self) -> List[str]:
+        """
+        Return:
+            List of production classes affected by self.
+        """
         ...
 
-    def me_impact(self, space_type):
-        ...
-
-    def te_impact(self, space_type):
-        ...
-
-    def represent_te(self, space_type):
+    def represent_te(self, space_type) -> Dict[str, float]:
+        """
+        Return:
+            Dictionary of time-efficiency impacts.
+        """
         res = {
             production_class: self.te_impact(space_type)
             for production_class in self.affects
@@ -56,6 +58,10 @@ class RigEffect(ABC):
         return res
 
     def represent_me(self, space_type):
+        """
+        Return:
+            Dictionary of material-efficiency impacts.
+        """
         res = {
             production_class: self.me_impact(space_type)
             for production_class in self.affects
@@ -64,6 +70,8 @@ class RigEffect(ABC):
 
 
 class MediumSetIndustryRig(RigEffect):
+    """Represents the rig for medium-sized citadel."""
+
     def __init__(self, production_class, tier: int, rig_type: str = "ME"):
         assert rig_type in ("ME", "TE")
         assert tier in (1, 2)
@@ -73,13 +81,21 @@ class MediumSetIndustryRig(RigEffect):
         self.rig_type = rig_type
 
     @property
-    def affects(self):
+    def affects(self) -> List[str]:
         return [self.production_class]
 
-    def te_impact(self, space_type):
+    def te_impact(self, space_type) -> float:
+        """
+        Returns:
+            time-efficiencty impact of rig according to space.
+        """
         return TE_IMPACTS[self.tier][space_type] if self.rig_type == "TE" else 0
 
-    def me_impact(self, space_type):
+    def me_impact(self, space_type) -> float:
+        """
+        Returns:
+            material-efficiencty impact of rig according to space.
+        """
         return ME_IMPACTS[self.tier][space_type] if self.rig_type == "ME" else 0
 
     def __repr__(self):
@@ -94,9 +110,17 @@ class MediumSetIndustryRig(RigEffect):
         )
 
 
-class RigSet:
+class RigSet(RigEffect):
     def __init__(self, rig_effects: List[RigEffect] = None):
         self.rig_effects = rig_effects or []
+
+    @property
+    def affects(self):
+        return [
+            production_class
+            for effect in rig_effects
+            for production_class in effect.affects
+        ]
 
     def represent_me(self, space_type):
         res = defaultdict(lambda: 0)
@@ -119,6 +143,7 @@ class RigSet:
         return res
 
     def add(self, *rig_effects):
+        """Add rig_effect to RigSet collection."""
         self.rig_effects.extend(rig_effects)
 
     def __contains__(self, rig_effect):
@@ -127,16 +152,25 @@ class RigSet:
     def __iter__(self):
         return iter(self.rig_effects)
 
-    def to_dataframe(self, space_type, sde):
+    def to_dataframe(self, space_type: str, data_export) -> pd.DataFrame:
+        """Create a pandas DataFrame from RigSet collections
+
+        Result:
+        index: typeName
+
+        Columns:
+        te_impact - part of time required after rigset application
+        me_impact - part of materials required after rigset application
+        """
         me_dictionary = {
             typename: [1 - impact]
             for production_class, impact in self.represent_me(space_type).items()
-            for typename in sde.get_class_contents(production_class)
+            for typename in data_export.get_class_contents(production_class)
         }
         te_dictionary = {
             typename: [1 - impact]
             for production_class, impact in self.represent_te(space_type).items()
-            for typename in sde.get_class_contents(production_class)
+            for typename in data_export.get_class_contents(production_class)
         }
         me_df = pd.DataFrame.from_dict(
             me_dictionary, orient="index", columns=["me_impact"]
@@ -147,6 +181,7 @@ class RigSet:
         return te_df.join(me_df, how="outer").fillna(1.0)
 
 
+# List is not full for now
 AVALIABLE_RIGS = (
     MediumSetIndustryRig(production_class=ProductionClass.BASIC_LARGE_SHIP, tier=1),
     MediumSetIndustryRig(production_class=ProductionClass.ADVANCED_LARGE_SHIP, tier=1),
