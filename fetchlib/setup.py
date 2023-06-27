@@ -1,11 +1,11 @@
 import pickle
-from typing import Iterable, Set
+from typing import Iterable, Optional, Set
 
 import pandas as pd
 
 from fetchlib.blueprint import Blueprint, BlueprintCollection
 from fetchlib.rig import RigSet
-from fetchlib.static_data_export import sde
+from fetchlib.static_data_export import AbstractDataExport, sde
 from fetchlib.utils import PATH, CitadelType, ProductionClass, SpaceType
 
 DEFAULT_NON_PRODUCTABLES = {
@@ -19,14 +19,11 @@ DEFAULT_NON_PRODUCTABLES = {
 class Setup:
     """Represents industry cluster used for production."""
 
-    # FIXME probably should apply 'builder' pattern
-    def __init__(
-        self,
-        path=PATH / "main_setup.pkl",
-        non_productables=DEFAULT_NON_PRODUCTABLES,
-        reaction_lines=20,
-        production_lines=20,
-    ):
+    def __init__(self, path):
+        """
+        Args:
+            path - file for setup serialization
+        """
         self.path = path
         self.citadel_type = CitadelType.RAITARU
         self.space_type = SpaceType.NULL_WH
@@ -34,14 +31,8 @@ class Setup:
         self.skills = None
         self.reaction_lines = 20
         self.production_lines = 20
-        self._non_productables = non_productables
-        self.collection = BlueprintCollection(self.initial_collection())
-
-    def initial_collection(self):
-        data = sde.component_by_classes
-        for product_type, lst in data.items():
-            for name in lst:
-                yield Blueprint(name, 0.1, 0.2)
+        self._non_productables = DEFAULT_NON_PRODUCTABLES
+        self.collection = BlueprintCollection([])
 
     @property
     def non_productables(self) -> Set[str]:
@@ -49,41 +40,8 @@ class Setup:
         Returns:
             Set of typeNames unwanted for production.
         """
+        # FIXME add reactions to non_productubles if spaceType is highsec or there is no refinery in citadels
         return self._non_productables
-
-    def add_blueprint_to_collection(
-        self,
-        *,
-        name: str,
-        material_efficiency: float,
-        time_efficiency: float,
-        runs: int,
-    ):
-        """Add blueprint to inner blueprint collection.
-        Args:
-            name - produced typeName
-            material_efficiency - me in [0.0, 0.1]
-            time_efficiency - te in [0.0, 0.2]
-            runs - max runs of blueprint
-        """
-        if not sde.types["typeName"].str.contains(name).any():
-            raise ValueError(f"Unknown typename: {name}")
-        self.collection.add(Blueprint(name=name, **kwargs))
-
-    def save_setup(self):
-        with open(self.path, "wb") as f:
-            pickle.dump(self, f)
-
-    @classmethod
-    def load_setup(cls, path=PATH / "main_setup.pkl"):
-        if path.exists():
-            with open(path, "rb") as file:
-                return pickle.load(file)
-        return None
-
-    def set_lines_amount(self, reaction: int, production: int):
-        self.reaction_lines = reaction
-        self.production_lines = production
 
     @property
     def efficiency_impact(self) -> pd.DataFrame:
@@ -105,4 +63,86 @@ class Setup:
         return res[["te_impact", "me_impact", "run"]]
 
 
-setup = Setup.load_setup() or Setup()
+class SetupManager:
+    """Class, responsible for Setup creation/serealization/management"""
+
+    def __init__(self, data_export: AbstractDataExport):
+        self.data_export = data_export
+
+    def get(self, name: str) -> Setup:
+        """Retrieves setup from storage or returns the new one and set's data_export field"""
+        path = PATH / f"{name}_setup.pkl"
+        if (setup := self.load_setup(path)) is not None:
+            return setup
+        setup = Setup(path)
+        setup.collection = self.initial_collection
+        return setup
+
+    def load_setup(self, path) -> Optional[Setup]:
+        """
+        Args:
+            path - file to find serialized object
+        Returns:
+            setup if exists, otherwise None
+        """
+        if path.exists():
+            with open(path, "rb") as file:
+                setup = pickle.load(file)
+                return setup
+        return None
+
+    def save_setup(self, setup):
+        """Saves setup to the storage."""
+        with open(setup.path, "wb") as f:
+            pickle.dump(setup, f)
+
+    @property
+    def initial_collection(self) -> BlueprintCollection:
+        """Provides collection of component blueprints which
+        are typically are originals and fully researched.
+        """
+
+        production_classes = [
+            ProductionClass.ADVANCED_COMPONENT,
+            ProductionClass.ADVANCED_CAPITAL_COMPONENT,
+            ProductionClass.STRUCTURE_OR_COMPONENT,
+        ]
+
+        blueprints = [
+            Blueprint(type_name, material_efficiency=0.1, time_efficiency=0.2)
+            for production_class in production_classes
+            for type_name in self.data_export.get_class_contents(production_class)
+        ]
+
+        return BlueprintCollection(blueprints)
+
+    def add_blueprint_to_setup(self, setup, *, name, **kwargs):
+        """Add blueprint to blueprint collection of setup.
+        Args:
+            name - produced typeName
+            material_efficiency - me in [0.0, 0.1]
+            time_efficiency - te in [0.0, 0.2]
+            runs - max runs of blueprint
+        """
+
+        if name not in self.data_export.productable_type_names.values:
+            raise ValueError(f"Unknown typename: {name}")
+
+        setup.collection.add(Blueprint(name=name, **kwargs))
+
+    def set_lines_amount(
+        self,
+        *,
+        setup: Setup,
+        reaction_lines: Optional[int],
+        production_lines: Optional[int],
+    ):
+        if reaction is not None:
+            self.reaction_lines = reaction_lines
+        if production is not None:
+            self.production_lines = production_lines
+
+    def add_non_productable_to_setup(self, setup, name):
+        if name not in self.data_export.productable_type_names.values:
+            raise ValueError(f"Unknown typename: {name}")
+        setup._non_productables.add(name)

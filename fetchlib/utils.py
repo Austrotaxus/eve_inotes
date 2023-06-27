@@ -73,6 +73,7 @@ CLASSES_GROUPS = {
         "sleeper_component": 1147,
         "ram": 1908,
         "fuel": 1870,  # FIXME need to check
+        "protective_components": 2768,
     },
     ProductionClass.BASIC_CAPITAL_COMPONENT: {
         "basic_capital_component": 781,

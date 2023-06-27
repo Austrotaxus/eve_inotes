@@ -141,6 +141,16 @@ class AbstractDataExport(ABC):
         res = list(self.types[self.types["marketGroupID"].isin(group_ids)]["typeName"])
         return res
 
+    @property
+    @cache
+    def productable_type_names(self) -> pd.Series:
+        """
+        Returns:
+            Series of types which could be producted in game
+        """
+
+        return self.append_products(self.types)["typeName"]
+
 
 class StaticDataExport(AbstractDataExport):
     """DataExport created from eve StaticDataExport sqlite3 database.
