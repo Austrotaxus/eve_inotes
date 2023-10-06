@@ -182,3 +182,24 @@ def test_append_everything(data_export):
 def test_get_class_contents(data_export):
     components = data_export.get_class_contents(ProductionClass.ADVANCED_COMPONENT)
     assert "Superconducting Gravimetric Amplifier" in components
+
+
+@pytest.mark.parametrize(
+    "data_export",
+    [
+        fde,
+        sde,
+    ],
+)
+def test_productable_items(data_export):
+    productables = data_export.productable_type_names.values
+    assert "Superconducting Gravimetric Amplifier" in productables
+    assert "Tengu" in productables
+    assert "Fulleroferrocene"
+    assert all(
+        [
+            not product.endswith("Reaction Formula")
+            and not product.endswith("Blueprint")
+            for product in productables
+        ]
+    )

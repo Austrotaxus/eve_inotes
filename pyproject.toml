@@ -1,2 +1,27 @@
 [tool.isort]
 profile = "black"
+
+[tool.poetry]
+name = "eve-inotes"
+version = "0.1.0"
+description = ""
+authors = ["austrotaxus <sergey.koziniy@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+requests = "*"
+pandas = "==1.5"
+pyinquirer = "==1.0.3"
+pysqlite3 = "*"
+numpy = "==1.23"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+pre-commit = "*"
+debugpy = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

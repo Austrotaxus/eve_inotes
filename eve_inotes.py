@@ -6,14 +6,17 @@ from fetchlib import balancify_runs
 from fetchlib.decomposition import Decomposition
 from fetchlib.decompositor import Decompositor
 from fetchlib.rig import AVALIABLE_RIGS, RigSet
-from fetchlib.setup import setup
+from fetchlib.setup import SetupManager
 from fetchlib.static_data_export import sde
 from fetchlib.utils import CitadelType, ProductionClass, SpaceType
+
+setup_manager = SetupManager(data_export=sde)
+setup = setup_manager.get("main")
 
 
 class InqController:
     def __init__(self, setup):
-        self.setup = setup
+        pass
 
     def evaluate_production_for_list(self):
         questions = [
@@ -58,7 +61,9 @@ class InqController:
 
         answers = prompt(questions)
         reac, produc = int(answers["reac"]), int(answers["prod"])
-        self.setup.set_lines_amount(reac, produc)
+        setup_manager.set_lines_amount(
+            setup=setup, reaction_lines=reac, production_lines=produc
+        )
         return "set_lines_amount"
 
     def add_non_productable(self):
@@ -70,24 +75,24 @@ class InqController:
             }
         ]
         answers = prompt(question)
-        self.setup._non_productables.add(answers["item"])
+        setup._non_productables.add(answers["item"])
         return "Added non-productable"
 
     def show_setup(self):
         print("Rigs: ")
-        for r in self.setup.rig_set:
+        for r in setup.rig_set:
             print(r)
-        print("Citadel: {}".format(self.setup.citadel_type))
-        print("Space: {}".format(self.setup.space_type))
+        print("Citadel: {}".format(setup.citadel_type))
+        print("Space: {}".format(setup.space_type))
         print(
             "Lines - reaction: {}, production: {}".format(
-                self.setup.reaction_lines, self.setup.production_lines
+                setup.reaction_lines, setup.production_lines
             )
         )
         return "Shown setup"
 
     def set_citadel_type(self):
-        current = self.setup.citadel_type
+        current = setup.citadel_type
         possible = CitadelTypes.to_dict().values()
         activity_prompt = {
             "type": "list",
@@ -97,11 +102,11 @@ class InqController:
             "choices": [{"name": name} for name in possible],
         }
         answer = prompt(activity_prompt)
-        self.setup.citadel_type = answer["citadel"]
+        setup.citadel_type = answer["citadel"]
         return (activity_prompt, answer)
 
     def set_space_type(self):
-        current = self.setup.space_type
+        current = setup.space_type
         possible = SpaceType.to_dict().values()
         activity_prompt = {
             "type": "list",
@@ -115,7 +120,7 @@ class InqController:
         return activity_prompt, answer
 
     def select_rigs(self):
-        current = self.setup.rig_set
+        current = setup.rig_set
         activity_prompt = {
             "type": "checkbox",
             "name": "rigs",
@@ -127,7 +132,7 @@ class InqController:
             ],
         }
         answer = prompt(activity_prompt)
-        self.setup.rig_set = RigSet(answer["rigs"])
+        setup.rig_set = RigSet(answer["rigs"])
         return (activity_prompt, answer)
 
     def set_blueprint(self):
@@ -160,17 +165,10 @@ class InqController:
                 "message": "Runs: (Leave unfilled for BPO)",
                 "validate": lambda x: is_int(x) and int(x) >= 0,
             },
-            {
-                "type": "list",
-                "name": "p_type",
-                "message": "Product Type?",
-                "choices": [
-                    {"name": name} for name in ProductionClass.to_dict().values()
-                ],
-            },
         ]
         answers = prompt(questions)
-        self.setup.add_blueprint_to_collection(
+        setup_manager.add_blueprint_to_setup(
+            setup=setup,
             name=answers["type_name"],
             material_efficiency=float(answers["me"]),
             time_efficiency=float(answers["te"]),
@@ -186,7 +184,7 @@ class InqController:
         }
         answer = prompt(question)
         no_bpc_msg = "No such BPC in collection!"
-        print(self.setup.collection.get(answer["bpc_name"], no_bpc_msg))
+        print(setup.collection.get(answer["bpc_name"], no_bpc_msg))
         return (question, answer)
 
     def evaluate_production_schema(self):
@@ -221,7 +219,7 @@ class InqController:
         pass
 
     def save_and_exit(self):
-        self.setup.save_setup()
+        setup_manager.save_setup(setup)
         return None
 
     def activity_set(self):
