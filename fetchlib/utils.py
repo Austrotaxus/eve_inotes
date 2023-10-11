@@ -1,3 +1,4 @@
+import enum
 import os
 from abc import abstractproperty
 from collections import defaultdict
@@ -21,8 +22,17 @@ class BaseCollectionMixin:
         d = cls.__dict__
         return {k: v for k, v in d.items() if not k.startswith("__")}
 
+    @classmethod
+    def values(cls):
+        return list(cls.to_dict().values())
 
-class ProductionClass(BaseCollectionMixin):
+
+class Tier(enum.Enum):
+    one = 1
+    two = 2
+
+
+class ProductionClass(BaseCollectionMixin, enum.Enum):
     ADVANCED_CAPITAL_COMPONENT = "advanced_capital_component"
     ADVANCED_CAPITAL_SHIP = "advanced_capital_ship"
     ADVANCED_COMPONENT = "advanced_component"
@@ -39,22 +49,27 @@ class ProductionClass(BaseCollectionMixin):
     STRUCTURE_OR_COMPONENT = "structure_component"
 
 
-class ReactionClass(BaseCollectionMixin):
+class ReactionClass(BaseCollectionMixin, enum.Enum):
     HYBRID_REACTION = "hybrid_reactions"
     COMPOSITE_REACTION = "composite_reactions"
     BIOCHEMICAL_REACTION = "biochemical_reactions"
 
 
-class CitadelType(BaseCollectionMixin):
+class CitadelType(BaseCollectionMixin, enum.Enum):
     ASTRAHUS = "Astrahus"
     RAITARU = "Raitaru"
     ATHANOR = "Athanor"
 
 
-class SpaceType(BaseCollectionMixin):
+class SpaceType(BaseCollectionMixin, enum.Enum):
     HIGHSEC = "highsec"
     LOWSEC = "lowsec"
     NULL_WH = "null_wh"
+
+
+class RigType(enum.Enum):
+    material_efficiency = "ME"
+    time_efficiency = "TE"
 
 
 """

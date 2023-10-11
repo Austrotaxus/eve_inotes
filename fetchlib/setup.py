@@ -19,20 +19,31 @@ DEFAULT_NON_PRODUCTABLES = {
 class Setup:
     """Represents industry cluster used for production."""
 
-    def __init__(self, path):
+    def __init__(
+        self,
+        citatedl_type=CitadelType.RAITARU,
+        space_type=SpaceType.NULL_WH,
+        rig_set=None,
+        reaction_lines=20,
+        production_lines=20,
+        non_productables=DEFAULT_NON_PRODUCTABLES,
+        blueprint_collection=None,
+    ):
         """
         Args:
             path - file for setup serialization
         """
-        self.path = path
-        self.citadel_type = CitadelType.RAITARU
-        self.space_type = SpaceType.NULL_WH
-        self.rig_set = RigSet()
-        self.skills = None
-        self.reaction_lines = 20
-        self.production_lines = 20
-        self._non_productables = DEFAULT_NON_PRODUCTABLES
-        self.collection = BlueprintCollection([])
+        self.citadel_type = citatedl_type
+        self.space_type = space_type
+        self.rig_set = ri_gset if rig_set else RigSet()
+        self.reaction_lines = reaction_lines
+        self.production_lines = production_lines
+        self._non_productables = (
+            non_productables if non_productables else DEFAULT_NON_PRODUCTABLES
+        )
+        self.collection = (
+            blueprint_collection if blueprint_collection else BlueprintCollection([])
+        )
 
     @property
     def non_productables(self) -> Set[str]:
