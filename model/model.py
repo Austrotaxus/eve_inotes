@@ -19,11 +19,13 @@ class Setup(Base):
     setup_id = mapped_column(Integer, primary_key=True, autoincrement=True)
     reaction_lines = mapped_column(Integer, nullable=False)
     production_lines = mapped_column(Integer, nullable=False)
+    setup_name = mapped_column(String, nullable=False)
 
     def to_read_model(self) -> SetupSchema:
         return SetupSchema(
             setup_id=self.setup_id,
             user_id=0,
+            setup_name=self.setup_name,
             reaction_lines=self.reaction_lines,
             production_lines=self.production_lines,
         )
@@ -68,13 +70,13 @@ class Blueprint(Base):
     material_efficiency = mapped_column(Float, nullable=False)
     time_efficiency = mapped_column(Float, nullable=False)
     runs = mapped_column(Integer, default=2**20)
-    blueprint = mapped_column(String, nullable=False)
+    product = mapped_column(String, nullable=False)
 
     def to_read_model(self) -> BlueprintSchema:
         return BlueprintSchema(
             setup_id=self.setup_id,
             blueprint_id=self.blueprint_id,
-            blueprint="Some blueprint",
+            product=self.product,
             material_efficiency=self.material_efficiency,
             time_efficiency=self.time_efficiency,
             runs=self.runs,

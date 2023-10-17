@@ -58,14 +58,6 @@ class SetupRepository(SQLAlchemyRepository):
 class MediumRigRepository(SQLAlchemyRepository):
     model = MediumRig
 
-
-class NonProductableRepository(SQLAlchemyRepository):
-    model = NonProductable
-
-
-class CitadelRepository(SQLAlchemyRepository):
-    model = Citadel
-
     async def find_all(self, citadel_id=None):
         async with async_session_maker() as session:
             if citadel_id is None:
@@ -75,6 +67,14 @@ class CitadelRepository(SQLAlchemyRepository):
             res = await session.execute(stmt)
             res = [row[0].to_read_model() for row in res.all()]
             return res
+
+
+class NonProductableRepository(SQLAlchemyRepository):
+    model = NonProductable
+
+
+class CitadelRepository(SQLAlchemyRepository):
+    model = Citadel
 
 
 class BlueprintRepository(SQLAlchemyRepository):

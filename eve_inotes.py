@@ -205,9 +205,9 @@ class InqController:
 
         product, amount = answers["product"].title(), int(answers["amount"])
         table = sde.create_init_table(**{product: amount})
-        decompositor = Decompositor(sde, setup)
+        decompositor = decompositor(sde, setup)
 
-        decomposition = Decomposition(step=table, decompositor=decompositor)
+        decomposition = decomposition(step=table, decompositor=decompositor)
         print(str(decomposition))
         print(balancify_runs(decomposition, setup))
         return answers

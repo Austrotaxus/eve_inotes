@@ -3,6 +3,9 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 
+from fetchlib.setup import Setup
+from fetchlib.static_data_export import StaticDataExport
+
 
 class Decompositor:
     """Callable detemines the strategy of decomposition.
@@ -10,7 +13,7 @@ class Decompositor:
     Used in pair with Decomposition
     """
 
-    def __init__(self, data_export, setup):
+    def __init__(self, data_export: StaticDataExport, setup: Setup):
         self.data_export = data_export
         self.setup = setup
 

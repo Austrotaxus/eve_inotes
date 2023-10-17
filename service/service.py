@@ -35,12 +35,13 @@ class SetupService:
         payload = setup_records[0].model_dump()
         payload.pop("user_id")
         payload.pop("setup_id")
+        payload.pop("setup_name")
         return partial(Setup, **payload)
 
 
 class CitadelService:
     def __init__(self, citadel_repo: AbstractRepository):
-        self.repo = citadel_repo
+        self.repo = citadel_repo()
 
     async def add_citadel(self, citadel: CitadelSchema):
         citadel_dict = citadel.model_dump()
@@ -48,7 +49,7 @@ class CitadelService:
         return citadel_id
 
     async def get_citadels(self, setup_id):
-        return self.repo.find_all(setup_id=setup_id)
+        return await self.repo.find_all(setup_id=setup_id)
 
 
 class BlueprintService:
@@ -78,13 +79,13 @@ class MediumRigService:
         rig_id = await self.repo.add_one(rig_dict)
         return rig_id
 
-    async def get_medium_rig_set(self, setup_id) -> RigSet:
-        rig_records = await self.repo.find_all(setup_id)
+    async def get_medium_rig_set(self, citadel_id) -> RigSet:
+        rig_records = await self.repo.find_all(citadel_id)
         rigs = [MediumSetIndustryRig(**record) for record in rig_records]
         return RigSet(rigs)
 
-    async def get_medium_rigs(self, setup_id) -> List[MediumRigSchema]:
-        return await self.repo.fild_all(setup_id)
+    async def get_medium_rigs(self, citadel_id) -> List[MediumRigSchema]:
+        return await self.repo.fild_all(citadel_id)
 
 
 class NonProductableService:

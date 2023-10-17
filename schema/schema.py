@@ -10,6 +10,7 @@ class SetupSchema(BaseModel):
     user_id: int
     reaction_lines: int = Field(ge=0)
     production_lines: int = Field(ge=0)
+    setup_name: str
 
 
 class MediumRigSchema(BaseModel):
@@ -22,7 +23,7 @@ class MediumRigSchema(BaseModel):
 
 class BlueprintSchema(BaseModel):
     blueprint_id: int
-    blueprint: str
+    product: str
     material_efficiency: float = Field(ge=0, le=0.1)
     time_efficiency: float = Field(ge=0, le=0.2)
     runs: int = Field(ge=0)

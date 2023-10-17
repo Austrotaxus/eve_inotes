@@ -35,7 +35,7 @@ class Setup:
         """
         self.citadel_type = citatedl_type
         self.space_type = space_type
-        self.rig_set = ri_gset if rig_set else RigSet()
+        self.rig_set = rig_set if rig_set else RigSet()
         self.reaction_lines = reaction_lines
         self.production_lines = production_lines
         self._non_productables = (
