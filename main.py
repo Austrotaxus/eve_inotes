@@ -34,18 +34,21 @@ from service.service import (
 app = FastAPI()
 
 
-async def combine_rigs(setup_id: int) -> RigSet:
-    citadels = await citadel_service().get_citadels(setup_id)
-
-    return RigSet(
-        [rig_service().get_rig_set(citadel.citadel_id) for citadel in citadels]
-    )
-
-
 async def combine_setup(
     setup_id: int,
+    non_productable_service=non_productable_service,
+    blueprint_service=blueprint_service,
+    setup_service=setup_service,
+    citadel_service=citadel_service,
 ):
-    rigs = await combine_rigs(setup_id)
+    async def combine_rigs(setup_id: int, citadel_service) -> RigSet:
+        citadels = await citadel_service().get_citadels(setup_id)
+
+        return RigSet(
+            [rig_service().get_rig_set(citadel.citadel_id) for citadel in citadels]
+        )
+
+    rigs = await combine_rigs(setup_id, citadel_service)
     # citadel_service = citadel_service()
     blueprints = await blueprint_service().get_blueprints(setup_id)
     non_productables = await non_productable_service().get_non_productables(setup_id)
@@ -64,10 +67,10 @@ async def evaluate_production(
     setup_id: int,
     product: str,
     quantity: int,
-) -> str:
+) -> dict:
     setup = await combine_setup(setup_id=setup_id)
     sde = StaticDataExport()
     table = sde.create_init_table(**{product: quantity})
     decompositor_function = Decompositor(sde, setup)
     decomposition = Decomposition(step=table, decompositor=decompositor_function)
-    return str(decomposition)
+    return decomposition.to_dict()

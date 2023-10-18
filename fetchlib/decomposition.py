@@ -84,3 +84,15 @@ class Decomposition:
             result.append(table.to_csv(index=False, sep="\t"))
 
         return "\n".join(result)
+
+    def to_dict(self) -> dict:
+        """
+        Returns:
+        Nested dictionary of the following structure:
+        """
+
+        materials_df = self._required_materials().set_index("typeID")
+        result = {"materials": materials_df.to_dict("index")}
+        for i, step_df in enumerate(self.steps):
+            result[f"step  {i+1}"] = step_df.set_index("typeID").to_dict("index")
+        return result
